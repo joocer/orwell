@@ -1,3 +1,34 @@
+"""
+Data Writer
+
+Writes records to a data set partitioned by write time.
+
+Default behaviour is to create a folder structure for year, month
+and day, and partitioning data into files of 50,000 records or
+are written continuously without a 60 second gap.
+
+When a partition is written a method is called (on_partition_closed),
+this provides a mechanism for users to perform an action on the 
+recently closed partition file, such as save to a permanent store.
+
+Records can be validated against a schema and records can be 
+committed to disk after every write. Schema validation helps 
+enforce format for the data and commit after every write reduces
+the probability of data loss but both come with a cost; results will
+differ depending on exact data but as an approximation (from and 11
+field test data set):
+
+- cache commits and no validation      = ~100% speed
+- commit every write and validation    = ~40% speed
+- commit every write but no validation = ~66% speed
+- cache commits and no validation      = ~50% speed
+
+Paths for the data writer can contain datetime string formatting,
+the string will be formatted before being created into folders. The
+changing of dates is handled by the worker thread, this may lag a 
+second before it forces the folder to change.
+"""
+
 import datetime
 import time
 import os
@@ -21,12 +52,21 @@ if not json_parser:
 
 def _worker_thread(data_writer=None):
     while True:
+        change_partition = False
         if (time.time_ns() - data_writer.last_write) > (data_writer.wait_time_seconds * 1e9):
+            change_partition = True
+        if not data_writer.formatted_path == datetime.datetime.today().strftime(data_writer.path)
+            change_partition = True
+
+        if change_partition:
             if data_writer.file_writer:
-                data_writer.on_partition_full(data_writer.file_writer.filename)
+                data_writer.on_partition_closed(data_writer.file_writer.filename)
                 del data_writer.file_writer
                 data_writer.file_writer = None
-        time.sleep(5)
+
+        if data_writer.file_writer:
+            data_writer.file_writer.file.flush()
+        time.sleep(1)
 
 
 class DataWriter():
@@ -37,17 +77,23 @@ class DataWriter():
                 commit_on_write=False,
                 schema=None,
                 use_worker_thread=True,
-                wait_time_seconds=5):
+                wait_time_seconds=60):
         """
         DataWriter
 
         parameters:
         - path: the path to save records to, this is a folder name
         - partition_size: the number of records per partition
+            (-1) is unbounded
         - commit_on_write: commit rather than cache writes - is 
             slower but less chance of loss of data
         - schema: Schema object - if set records are validated 
             before being written
+        - use_worker_thread: creates a thread which performs 
+            regular checks and corrections
+        - wait_time_seconds: the time with no new writes to a 
+            partition before closing it and creating a new partition
+            regardless of the records
         """
         self.path = path
         self.partition_size = partition_size
@@ -57,6 +103,7 @@ class DataWriter():
         self.file_writer = None
         self.last_write = time.time_ns()
         self.wait_time_seconds = wait_time_seconds
+        self.formatted_path = ""
 
         if use_worker_thread:
             self.thread = threading.Thread(target=_worker_thread, args=(self,))
@@ -70,21 +117,21 @@ class DataWriter():
             # anything else
             if self.schema:
                 self.schema.validate(subject=record, raise_exception=True)
-
+            # if I don't have a current file to write to, create one
             if not self.file_writer:
-                formatted_path = datetime.datetime.today().strftime(self.path)
-                path = Path(formatted_path)
+                self.formatted_path = datetime.datetime.today().strftime(self.path)
+                path = Path(self.formatted_path)
                 os.makedirs(path, exist_ok=True)
                 filename = path / (str(time.time_ns()) + ".jsonl")
-
                 self.file_writer = _PartFileWriter(filename=filename, 
                             commit_on_write=self.commit_on_write)
                 self.records_to_write_in_partition = self.partition_size
-
+            # write the record to the file
             self.file_writer.append(json.dumps(record).decode('utf8') + "\n")
+            # close the partition when the record count is reached
             self.records_to_write_in_partition -= 1
             if self.records_to_write_in_partition == 0:
-                self.on_partition_full(self.file_writer.filename)
+                self.on_partition_closed(self.file_writer.filename)
                 del self.file_writer
                 self.file_writer = None
 
@@ -95,7 +142,7 @@ class DataWriter():
     def __exit__(self, type, value, traceback):
         pass
 
-    def on_partition_full(self, partition_file):
+    def on_partition_closed(self, partition_file):
         pass
 
     def __def__(self):
@@ -119,6 +166,7 @@ class _PartFileWriter():
             self.file.flush()
     def __del__(self):
         try:
+            self.file.flush()
             self.file.close()
         except:
             pass
