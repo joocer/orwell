@@ -51,21 +51,37 @@ if not json_parser:
 
 
 def _worker_thread(data_writer=None):
-    while True:
+    """
+    Method to run an a separate thread performing two tasks
+    - when the day changes, it closes the existing partition so a 
+        new one is opened with today's date
+    - to close partitions when new records haven't been recieved
+        for a period of time (default 60 seconds)
+
+    These are done in a separate thread so the 'append' method
+    doesn't need to perform these checks every write.
+    """
+    while data_writer.use_worker_thread:
         change_partition = False
         if (time.time_ns() - data_writer.last_write) > (data_writer.wait_time_seconds * 1e9):
             change_partition = True
-        if not data_writer.formatted_path == datetime.datetime.today().strftime(data_writer.path)
+        if not data_writer.formatted_path == datetime.datetime.today().strftime(data_writer.path):
             change_partition = True
 
+        # close the current partition
         if change_partition:
-            if data_writer.file_writer:
-                data_writer.on_partition_closed(data_writer.file_writer.filename)
-                del data_writer.file_writer
-                data_writer.file_writer = None
+            with threading.Lock():
+                if data_writer.file_writer:
+                    data_writer.on_partition_closed(data_writer.file_writer.filename)
+                    del data_writer.file_writer
+                    data_writer.file_writer = None
 
-        if data_writer.file_writer:
-            data_writer.file_writer.file.flush()
+        # try flushing writes
+        try:
+            if data_writer.file_writer:
+                data_writer.file_writer.file.flush()
+        except: pass #
+
         time.sleep(1)
 
 
@@ -104,6 +120,7 @@ class DataWriter():
         self.last_write = time.time_ns()
         self.wait_time_seconds = wait_time_seconds
         self.formatted_path = ""
+        self.use_worker_thread = use_worker_thread
 
         if use_worker_thread:
             self.thread = threading.Thread(target=_worker_thread, args=(self,))
@@ -111,13 +128,18 @@ class DataWriter():
             self.thread.start()
 
     def append(self, record={}):
+        """
+        Saves new entries to the partition; creating a new partition
+        if one isn't active.
+        """
+        # this is a killer - check the new record conforms to the
+        # schema before bothering with anything else
+        if self.schema:
+            self.schema.validate(subject=record, raise_exception=True)
+
         with threading.Lock():
             self.last_write = time.time_ns()
-            # this is a killer - check this before bothering with 
-            # anything else
-            if self.schema:
-                self.schema.validate(subject=record, raise_exception=True)
-            # if I don't have a current file to write to, create one
+            # if we don't have a current file to write to, create one
             if not self.file_writer:
                 self.formatted_path = datetime.datetime.today().strftime(self.path)
                 path = Path(self.formatted_path)
@@ -143,10 +165,13 @@ class DataWriter():
         pass
 
     def on_partition_closed(self, partition_file):
+        """
+        This is intended to be replaced
+        """
         pass
 
-    def __def__(self):
-        thread.kill()
+    def __del__(self):
+        self.use_worker_thread = False
 
 
 class _PartFileWriter():
