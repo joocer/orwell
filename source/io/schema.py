@@ -1,3 +1,4 @@
+  
 """
 Schema Validation
 
@@ -15,9 +16,9 @@ Supported Types:
 
 Example Schema:
 {
- "name": "Tweets",
+ "name": "Table Name",
  "fields": [
-     {"name": "_id", "type": "string"},
+     {"name": "id", "type": "string"},
      {"name": "country",  "type": ["string", "null"]},
      {"name": "followers", "type": ["string", "null"]}
  ]
@@ -28,11 +29,14 @@ import datetime
 import json
 
 
+VALID_BOOLEAN_VALUES = ("true", "false", "on", "off", "yes", "no")
+
+
 def _is_string(value):
     return type(value).__name__ == "str"
 
 def _is_boolean(value):
-    return str(value).lower in ["true", "false", "on", "off", "yes", "no"]
+    return str(value).lower() in VALID_BOOLEAN_VALUES
 
 def _is_numeric(value):
     try:
@@ -109,6 +113,9 @@ class Schema():
         if raise_exception and not result:
             raise ValueError("Record does not conform to schema.")
         return result
+
+    def __call__(self, subject=None, raise_exception=False):
+        return self.validate(subject=subject, raise_exception=raise_exception)
 
 def validate(subject={}, schema={}):
     return schema.validate(subject)
