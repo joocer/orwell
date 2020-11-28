@@ -1,23 +1,18 @@
-json_parser = None
-try:
-    import orjson as json
-    json_parser = "orjson"
-except ImportError:
-    pass
-if not json_parser:
-    try:
-        import ujson
-        json_parser = "ujson"
-    except ImportError:
-        import json
-from .readers.base_reader import BaseReader
+
+import json
 
 
-def dict_reader(reader: BaseReader):
-    for item in reader:
-        yield json.loads(item)
 
-def generator_chunker(generator, chunk_size: int):
+def select_fields(dic:dict, fields:list):
+    """
+    Selects items from a row, if the row doesn't exist, None is used.
+    """
+    return {field: dic.get(field, None) for field in fields}
+
+def select_all(x):
+    return True
+
+def generator_chunker(generator, chunk_size:int):
     chunk = []
     for item in generator:
         if len(chunk) >= chunk_size:

@@ -1,28 +1,23 @@
 """
 Reader
 """
-from file_reader import file_reader
-json_parser = None
+import json
+json_parser = json.loads
 try:
-    import orjson as json
-    json_parser = "orjson"
-except ImportError:
-    pass
-if not json_parser:
-    try:
-        import ujson
-        json_parser = "ujson"
-    except ImportError:
-        import json
-
+    import orjson
+    json_parser = orjson.loads
+except ImportError: pass
+try:
+    import ujson
+    json_parser = ujson.loads
+except ImportError: pass
+from ..utilities import select_all, select_fields
+from .file_reader import file_reader
 
 FORMATTERS = {
-    "json": json.loads,
+    "json": json_parser,
     "text": lambda x: x
 }
-
-def select_all(x):
-    return True
 
 class Reader():
 
@@ -36,7 +31,7 @@ class Reader():
         self.format = data_format
         self.formatter = FORMATTERS.get(self.format.lower())
         if not self.formatter:
-            self._unknown_format(self.format)
+            raise TypeError(F"data format unsupported: {self.format}.")
         self.fields = fields.copy()
         self.condition = condition
         self.limit = limit
@@ -65,7 +60,7 @@ class Reader():
             if not self.condition(record):
                 continue
             if self.fields != ['*']:
-                record = self._select_fields(record, self.fields)
+                record = select_fields(record, self.fields)
             return record
 
     """
@@ -99,30 +94,3 @@ class Reader():
         except ImportError:
             raise Exception("Pandas must be installed to use 'to_pandas'")
         return pd.DataFrame(self)
-
-    """
-    Error Handlers
-    """
-    def _unknown_format(self, format_):
-        raise Exception(F"{format_} is an unknown file format")
-
-
-    """
-    Helpers
-    """
-    def _select_fields(self, dic:dict, fields:list):
-        """
-        Selects items from a row, if the row doesn't exist, None is used.
-        """
-        return {field: dic.get(field, None) for field in fields}
-
-
-
-from pprint import pprint
-r = Reader(file_name="small.jsonl", limit=10, condition=lambda x: int(x['followers']) < 10, fields=['username', 'location'])
-
-#with r as i:
-#    line = i.read_line()
-#    while line:
-#        print(line)
-#        line = i.read_line()
