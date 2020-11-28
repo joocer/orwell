@@ -193,8 +193,7 @@ class _PartFileWriter():
         try:
             self.file.flush()
             self.file.close()
-        except:
-            pass
+        except: pass #nosec ignore if it fails 
 
 def save_file_to_bucket(source_file, project, bucket, path):
     # to be deprecated
