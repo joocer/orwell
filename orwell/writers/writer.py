@@ -80,7 +80,7 @@ def _worker_thread(data_writer=None):
         try:
             if data_writer.file_writer:
                 data_writer.file_writer.file.flush()
-        except: pass #
+        except: pass #nosec - if it fails, it doesn't /really/ matter
 
         time.sleep(1)
 

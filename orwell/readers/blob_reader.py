@@ -69,11 +69,13 @@ def get_project_init():
     get_project to that method.
     
     This is probably an anti-pattern.
+
+    #nosec - inputs are fixed, almost impossible to inject
     """
-    import subprocess
+    import subprocess       #nosec
     global get_project
 
-    result = subprocess.run(['gcloud', 'config', 'get-value', 'project'], stdout=subprocess.PIPE)
+    result = subprocess.run(['gcloud', 'config', 'get-value', 'project'], stdout=subprocess.PIPE) #nosec
     project = result.stdout.decode('utf8').rstrip('\n')
     get_project = lambda: project
     return project
