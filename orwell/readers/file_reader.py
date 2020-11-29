@@ -1,10 +1,7 @@
+from typing import Iterator
 
 
-#def file_reader(**kwargs):
-#    return _inner_reader(**kwargs)
-
-
-def file_reader(file_name="", chunk_size=16*1024*1024, delimiter="\n"):
+def file_reader(file_name:str="", chunk_size:int=16*1024*1024, delimiter:str="\n") -> Iterator:
     """
     Reads an arbitrarily long file, line by line
     """

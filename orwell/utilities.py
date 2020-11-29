@@ -1,9 +1,9 @@
 import datetime
 import json
+from typing import Iterator
 
 
-
-def select_fields(dic:dict, fields:list):
+def select_fields(dic:dict, fields:list) -> dict:
     """
     Selects items from a row, if the row doesn't exist, None is used.
     """
@@ -12,8 +12,8 @@ def select_fields(dic:dict, fields:list):
 def select_all(x):
     return True
 
-def generator_chunker(generator, chunk_size:int):
-    chunk = []
+def generator_chunker(generator:Iterator, chunk_size:int) -> Iterator:
+    chunk:list = []
     for item in generator:
         if len(chunk) >= chunk_size:
             yield chunk
@@ -30,11 +30,11 @@ def generator_chunker(generator, chunk_size:int):
 #    path = f"{view_name}/{date:%Y_%m}/{view_name}_{date:%Y_%m_%d}{extention}"
 #    return path
 
-def get_view_path(template="%store/%view/year_%Y/month_%m/day_%d/", 
-                  store="02_INTERMEDIATE",
-                  view="none",
-                  date=None, 
-                  extention=".jsonl"):
+def get_view_path(template:str="%store/%view/year_%Y/month_%m/day_%d/", 
+                  store:str="02_INTERMEDIATE",
+                  view:str="none",
+                  date:datetime.datetime=None, 
+                  extention:str=".jsonl") -> str:
     if not date:
         date = datetime.datetime.today()
 

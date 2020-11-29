@@ -1,5 +1,5 @@
 try:
-    from google.cloud import storage
+    from google.cloud import storage  # type:ignore
 except ImportError: pass
 from ..utilities import get_view_path, get_project
 import lzma

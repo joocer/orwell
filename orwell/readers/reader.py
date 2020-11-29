@@ -1,8 +1,9 @@
 """
 Reader
 """
+from typing import Callable
 import json
-json_parser = json.loads
+json_parser:Callable = json.loads
 try:
     import orjson
     json_parser = orjson.loads
@@ -14,6 +15,7 @@ except ImportError: pass
 from ..utilities import select_all, select_fields
 from .file_reader import file_reader
 
+
 FORMATTERS = {
     "json": json_parser,
     "text": lambda x: x
@@ -21,11 +23,11 @@ FORMATTERS = {
 
 class Reader():
 
-    def __init__(self, reader=file_reader, 
+    def __init__(self, reader:Callable=file_reader, 
                        data_format:str="json",
                        limit:int=-1,
-                       condition:callable=select_all,
-                       fields=['*'],
+                       condition:Callable=select_all,
+                       fields:list=['*'],
                        **kwargs): 
         self.reader = reader(**kwargs)
         self.format = data_format
@@ -90,7 +92,7 @@ class Reader():
     """
     def to_pandas(self):
         try:
-            import pandas as pd
+            import pandas as pd # type:ignore
         except ImportError:
             raise Exception("Pandas must be installed to use 'to_pandas'")
         return pd.DataFrame(self)
