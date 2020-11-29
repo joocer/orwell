@@ -1,7 +1,7 @@
 try:
     from google.cloud import storage
 except ImportError: pass
-from ..utilities import get_view_path
+from ..utilities import get_view_path, get_project
 import lzma
 import datetime
 
@@ -15,8 +15,6 @@ def blob_reader(view='',
                 store="02_INTERMEDIATE"):
     """
     Blob reader, will iterate over as set of blobs in a path.
-
-    Can read over multiple paths.
     """
     # if dates aren't provided, use today
     if not end_date:
@@ -27,14 +25,11 @@ def blob_reader(view='',
     # if the project is None, use the current project
     if not project:
         project = get_project()
-        
-    print(start_date, end_date, end_date - start_date, range(int((end_date - start_date).days) + 1))
 
     # cycle through the days, loading each days' file
     for cycle in range(int((end_date - start_date).days) + 1):
         cycle_date = start_date + datetime.timedelta(cycle)
         cycle_path = get_view_path(view=view, date=cycle_date, store=store, extention=extention, template="nvdcve-1.1-2017/nvdcve-1.1-2017_[%date].json")
-
         blobs_at_path = find_blobs_at_path(project=project, bucket=bucket, path=cycle_path)
         for blob in blobs_at_path:
             reader = _inner_blob_reader(blob_name=blob.name, project=project, bucket=bucket, chunk_size=chunk_size)
@@ -87,33 +82,6 @@ def _download_chunk(blob, start, end):
             # if we fail maybe we're not compressed
             pass 
     return chunk
-
-
-def get_project_init():
-    """
-    This gets the current project by querying gcloud using the command line.
-    
-    This should be fixed for the life of the script and calculating is somewhat
-    expensive, so we only ever want to work this out once.
-    
-    We assign get_project to an initializer, which gets the project name,
-    creates a method which returns this value and reassigns get_project to that
-    method.
-    
-    This is probably an anti-pattern.
-
-    #nosec - inputs are fixed, almost impossible to inject
-    """
-    import subprocess       #nosec
-    global get_project
-
-    result = subprocess.run(['gcloud', 'config', 'get-value', 'project'], stdout=subprocess.PIPE) #nosec
-    project = result.stdout.decode('utf8').rstrip('\n')
-    get_project = lambda: project
-    return project
-
-get_project = get_project_init
-
 
 
 def get_blob(project, bucket, blob_name):

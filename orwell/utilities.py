@@ -46,6 +46,30 @@ def get_view_path(template="%store/%view/year_%Y/month_%m/day_%d/",
     view_name = date.strftime(view_name)
     return view_name
 
+def get_project_init():
+    """
+    This gets the current project by querying gcloud using the command line.
+    
+    This should be fixed for the life of the script and calculating is somewhat
+    expensive, so we only ever want to work this out once.
+    
+    We assign get_project to an initializer, which gets the project name,
+    creates a method which returns this value and reassigns get_project to that
+    method.
+    
+    This is probably an anti-pattern.
+
+    #nosec - inputs are fixed, almost impossible to inject
+    """
+    import subprocess       #nosec
+    global get_project
+
+    result = subprocess.run(['gcloud', 'config', 'get-value', 'project'], stdout=subprocess.PIPE) #nosec
+    project = result.stdout.decode('utf8').rstrip('\n')
+    get_project = lambda: project
+    return project
+
+get_project = get_project_init
 
 def read_csv_lines(filename):
     with open(filename, "r", encoding="utf-8") as csvfile:

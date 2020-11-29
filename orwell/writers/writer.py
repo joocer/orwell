@@ -35,19 +35,15 @@ import os
 from pathlib import Path
 import threading
 
-# select the fastest json parser availabile
-json_parser = None
+import json
+json_dumps = json.dumps
 try:
-    import orjson as json
-    json_parser = "orjson"
-except ImportError:
-    pass
-if not json_parser:
-    try:
-        import ujson
-        json_parser = "ujson"
-    except ImportError:
-        import json
+    import orjson
+    json_dumps = orjson.dumps
+except ImportError: pass
+try:
+    import ujson
+    json_dumps = ujson.dumps
 
 
 def _worker_thread(data_writer=None):
@@ -149,7 +145,7 @@ class DataWriter():
                             commit_on_write=self.commit_on_write)
                 self.records_to_write_in_partition = self.partition_size
             # write the record to the file
-            self.file_writer.append(json.dumps(record).decode('utf8') + "\n")
+            self.file_writer.append(json_dumps(record).decode('utf8') + "\n")
             # close the partition when the record count is reached
             self.records_to_write_in_partition -= 1
             if self.records_to_write_in_partition == 0:
