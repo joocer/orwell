@@ -5,14 +5,48 @@ from ..utilities import get_view_path
 import lzma
 import datetime
 
+def blob_reader(view='', 
+                project=None, 
+                bucket=None, 
+                extention=".jsonl",
+                start_date=None, 
+                end_date=None, 
+                chunk_size=16*1024*1024,
+                store="02_INTERMEDIATE"):
+    """
+    Blob reader, will iterate over as set of blobs in a path.
 
-def get_blob(project, bucket, blob_name):
+    Can read over multiple paths.
+    """
+    # if dates aren't provided, use today
+    if not end_date:
+        end_date = datetime.date.today()
+    if not start_date:
+        start_date = datetime.date.today()
+
+    # if the project is None, use the current project
     if not project:
         project = get_project()
+        
+    print(start_date, end_date, end_date - start_date, range(int((end_date - start_date).days) + 1))
+
+    # cycle through the days, loading each days' file
+    for cycle in range(int((end_date - start_date).days) + 1):
+        cycle_date = start_date + datetime.timedelta(cycle)
+        cycle_path = get_view_path(view=view, date=cycle_date, store=store, extention=extention, template="nvdcve-1.1-2017/nvdcve-1.1-2017_[%date].json")
+
+        blobs_at_path = find_blobs_at_path(project=project, bucket=bucket, path=cycle_path)
+        for blob in blobs_at_path:
+            reader = _inner_blob_reader(blob_name=blob.name, project=project, bucket=bucket, chunk_size=chunk_size)
+            yield from reader
+
+
+def find_blobs_at_path(project, bucket, path):
     client = storage.Client(project=project)
     bucket = client.get_bucket(bucket)
-    blob = bucket.get_blob(blob_name)
-    return blob
+    blobs = client.list_blobs(bucket_or_name=bucket, prefix=path)
+    yield from blobs
+
 
 def _inner_blob_reader(project, bucket, blob_name, chunk_size=16*1024*1024, delimiter='\n'):
     """
@@ -30,7 +64,7 @@ def _inner_blob_reader(project, bucket, blob_name, chunk_size=16*1024*1024, deli
     cursor = 0
     while (cursor < blob_size):
         chunk = _download_chunk(blob=blob, start=cursor, end=min(blob_size, cursor+chunk_size-1))
-        cursor += len(chunk_size)   # was previously +len(chunk)
+        cursor += chunk_size   # was previously +len(chunk)
         chunk = chunk.decode('utf-8')
         # add the last line from the previous cycle
         chunk += carry_forward
@@ -57,16 +91,14 @@ def _download_chunk(blob, start, end):
 
 def get_project_init():
     """
-    This gets the current project by querying gcloud using the
-    command line.
+    This gets the current project by querying gcloud using the command line.
     
-    This should be fixed for the life of the script and calculating
-    is somewhat expensive, so we only ever want to work this out 
-    once.
+    This should be fixed for the life of the script and calculating is somewhat
+    expensive, so we only ever want to work this out once.
     
-    We assign get_project to an initializer, which gets the project
-    name, creates a method which returns this value and reassigns
-    get_project to that method.
+    We assign get_project to an initializer, which gets the project name,
+    creates a method which returns this value and reassigns get_project to that
+    method.
     
     This is probably an anti-pattern.
 
@@ -84,49 +116,10 @@ get_project = get_project_init
 
 
 
-def bytes_to_int(bytes):
-    result = 0
-    for b in bytes:
-        result = result * 256 + int(b)
-    return result
-
-def int_to_bytes(value, length):
-    result = []
-    for i in range(0, length):
-        result.append(value >> (i * 8) & 0xff)
-    result.reverse()
-    return bytes(result)
-
-
-
-def blob_reader(view, 
-                        project=None, 
-                        bucket=None, 
-                        extention=".jsonl",
-                        start_date=None, 
-                        end_date=None, 
-                        chunk_size=16*1024*1024,
-                        store="02_INTERMEDIATE"):
-    """
-    Build a virtual view across multiple files.
-    """
-
-    # if dates aren't provoded, use today
-    if not end_date:
-        end_date = datetime.date.today()
-    if not start_date:
-        start_date = datetime.date.today()
-
-    # if the project is None, use the current project
+def get_blob(project, bucket, blob_name):
     if not project:
         project = get_project()
-        
-    print(start_date, end_date, end_date - start_date, range(int((end_date - start_date).days) + 1))
-        
-    # cycle through the days, loading each days' file
-    for cycle in range(int((end_date - start_date).days) + 1):
-        cycle_date = start_date + datetime.timedelta(cycle)
-        cycle_file_location = get_view_path(view, cycle_date, store=store, extention=extention)
-
-        reader = blob_reader(project, bucket, cycle_file_location, chunk_size=chunk_size)
-        yield from reader
+    client = storage.Client(project=project)
+    bucket = client.get_bucket(bucket)
+    blob = bucket.get_blob(blob_name)
+    return blob
