@@ -12,6 +12,7 @@ def blob_reader(view='',
                 start_date=None, 
                 end_date=None, 
                 chunk_size=16*1024*1024,
+                template="%store/%view/year_%Y/month_%m/day_%d/",
                 store="02_INTERMEDIATE"):
     """
     Blob reader, will iterate over as set of blobs in a path.
@@ -29,7 +30,7 @@ def blob_reader(view='',
     # cycle through the days, loading each days' file
     for cycle in range(int((end_date - start_date).days) + 1):
         cycle_date = start_date + datetime.timedelta(cycle)
-        cycle_path = get_view_path(view=view, date=cycle_date, store=store, extention=extention, template="nvdcve-1.1-2017/nvdcve-1.1-2017_[%date].json")
+        cycle_path = get_view_path(view=view, date=cycle_date, store=store, extention=extention, template=template)
         blobs_at_path = find_blobs_at_path(project=project, bucket=bucket, path=cycle_path)
         for blob in blobs_at_path:
             reader = _inner_blob_reader(blob_name=blob.name, project=project, bucket=bucket, chunk_size=chunk_size)
