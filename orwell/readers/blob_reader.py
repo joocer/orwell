@@ -13,7 +13,8 @@ def blob_reader(view='',
                 end_date=None, 
                 chunk_size=16*1024*1024,
                 template="%store/%view/year_%Y/month_%m/day_%d/",
-                store="02_INTERMEDIATE"):
+                store="02_INTERMEDIATE",
+                **kwargs):
     """
     Blob reader, will iterate over as set of blobs in a path.
     """
