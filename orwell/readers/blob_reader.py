@@ -32,16 +32,17 @@ def blob_reader(view='',
     for cycle in range(int((end_date - start_date).days) + 1):
         cycle_date = start_date + datetime.timedelta(cycle)
         cycle_path = get_view_path(view=view, date=cycle_date, store=store, extention=extention, template=template)
-        blobs_at_path = find_blobs_at_path(project=project, bucket=bucket, path=cycle_path)
+        blobs_at_path = find_blobs_at_path(project=project, bucket=bucket, path=cycle_path, extention=extention)
         for blob in blobs_at_path:
             reader = _inner_blob_reader(blob_name=blob.name, project=project, bucket=bucket, chunk_size=chunk_size)
             yield from reader
 
 
-def find_blobs_at_path(project, bucket, path):
+def find_blobs_at_path(project, bucket, path, extention):
     client = storage.Client(project=project)
     bucket = client.get_bucket(bucket)
     blobs = client.list_blobs(bucket_or_name=bucket, prefix=path)
+    blobs = [blob for blob in blobs if blob.name.endswith(extention)]
     yield from blobs
 
 

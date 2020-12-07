@@ -44,6 +44,7 @@ except ImportError: pass
 try:
     import ujson
     json_dumps = ujson.dumps
+except ImportError: pass
 
 
 def _worker_thread(data_writer=None):
@@ -81,7 +82,7 @@ def _worker_thread(data_writer=None):
         time.sleep(1)
 
 
-class DataWriter():
+class Writer():
 
     def __init__(self, 
                 path="year_%Y/month_%m/day_%d", 
@@ -89,7 +90,9 @@ class DataWriter():
                 commit_on_write=False,
                 schema=None,
                 use_worker_thread=True,
-                wait_time_seconds=60):
+                wait_time_seconds=60,
+                compress=False,
+                **kwargs):
         """
         DataWriter
 
@@ -106,6 +109,7 @@ class DataWriter():
         - wait_time_seconds: the time with no new writes to a 
             partition before closing it and creating a new partition
             regardless of the records
+        - compress: compress the completed file using LZMA
         """
         self.path = path
         self.partition_size = partition_size
@@ -117,6 +121,9 @@ class DataWriter():
         self.wait_time_seconds = wait_time_seconds
         self.formatted_path = ""
         self.use_worker_thread = use_worker_thread
+
+        if compress:
+            raise NotImplementedError("Compress isn't implemented")
 
         if use_worker_thread:
             self.thread = threading.Thread(target=_worker_thread, args=(self,))
