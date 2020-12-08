@@ -13,7 +13,7 @@ try:
     json_parser = ujson.loads
 except ImportError: pass
 from ..utilities import select_all, select_fields
-from .file_reader import file_reader
+from .blob_reader import blob_reader
 
 
 FORMATTERS = {
@@ -23,7 +23,7 @@ FORMATTERS = {
 
 class Reader():
 
-    def __init__(self, reader:Callable=file_reader, 
+    def __init__(self, reader:Callable=blob_reader, 
                        data_format:str="json",
                        limit:int=-1,
                        condition:Callable=select_all,
