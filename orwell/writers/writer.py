@@ -34,20 +34,23 @@ import time
 import os
 from pathlib import Path
 import threading
+from .blob_writer import blob_writer
+from typing import Callable
 
 import json
 json_dumps = json.dumps
 try:
     import orjson
-    json_dumps = orjson.dumps
+    json_dumps = orjson.dumps  # type:ignore
 except ImportError: pass
 try:
     import ujson
-    json_dumps = ujson.dumps
+    json_dumps = ujson.dumps # type:ignore
 except ImportError: pass
 
 
-def _worker_thread(data_writer=None):
+def _worker_thread(
+    data_writer:Writer):
     """
     Method to run an a separate thread performing two tasks
     - when the day changes, it closes the existing partition so a 
@@ -84,15 +87,17 @@ def _worker_thread(data_writer=None):
 
 class Writer():
 
-    def __init__(self, 
-                path="year_%Y/month_%m/day_%d", 
-                partition_size=50000, 
-                commit_on_write=False,
-                schema=None,
-                use_worker_thread=True,
-                wait_time_seconds=60,
-                compress=False,
-                **kwargs):
+    def __init__(
+        self,
+        writer=blob_writer,
+        path="year_%Y/month_%m/day_%d",
+        partition_size=50000,
+        commit_on_write=False,
+        schema=None,
+        use_worker_thread=True,
+        wait_time_seconds=60,
+        compress=False,
+        **kwargs):
         """
         DataWriter
 
@@ -121,6 +126,8 @@ class Writer():
         self.wait_time_seconds = wait_time_seconds
         self.formatted_path = ""
         self.use_worker_thread = use_worker_thread
+        self.writer = writer
+        self.kwargs = kwargs
 
         if compress:
             raise NotImplementedError("Compress isn't implemented")
@@ -168,10 +175,7 @@ class Writer():
         pass
 
     def on_partition_closed(self, partition_file):
-        """
-        This is intended to be replaced
-        """
-        pass
+        self.writer()
 
     def __del__(self):
         self.use_worker_thread = False

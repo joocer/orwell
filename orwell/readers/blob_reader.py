@@ -5,16 +5,18 @@ from ..utilities import get_view_path, get_project
 import lzma
 import datetime
 
-def blob_reader(view='', 
-                project=None, 
-                bucket=None, 
-                extention=".jsonl",
-                start_date=None, 
-                end_date=None, 
-                chunk_size=16*1024*1024,
-                template="%store/%view/year_%Y/month_%m/day_%d/",
-                store="02_INTERMEDIATE",
-                **kwargs):
+def blob_reader(
+    view='', 
+    project=None, 
+    bucket=None, 
+    extention=".jsonl",
+    start_date=None, 
+    end_date=None, 
+    chunk_size=16*1024*1024,
+    template="%store/%view/year_%Y/month_%m/day_%d/",
+    store="02_INTERMEDIATE",
+    **kwargs):
+
     """
     Blob reader, will iterate over as set of blobs in a path.
     """
@@ -37,16 +39,25 @@ def blob_reader(view='',
             reader = _inner_blob_reader(blob_name=blob.name, project=project, bucket=bucket, chunk_size=chunk_size)
             yield from reader
 
+def find_blobs_at_path(
+    project:str,
+    bucket:str,
+    path:str,
+    extention:str):
 
-def find_blobs_at_path(project, bucket, path, extention):
     client = storage.Client(project=project)
     bucket = client.get_bucket(bucket)
     blobs = client.list_blobs(bucket_or_name=bucket, prefix=path)
     blobs = [blob for blob in blobs if blob.name.endswith(extention)]
     yield from blobs
 
+def _inner_blob_reader(
+    project:str,
+    bucket:str,
+    blob_name:str,
+    chunk_size:int=16*1024*1024,
+    delimiter:str='\n'):
 
-def _inner_blob_reader(project, bucket, blob_name, chunk_size=16*1024*1024, delimiter='\n'):
     """
     Reads lines from an arbitrarily long blob, line by line.
 
@@ -73,7 +84,11 @@ def _inner_blob_reader(project, bucket, blob_name, chunk_size=16*1024*1024, deli
     if len(carry_forward) > 0:
         yield carry_forward
 
-def _download_chunk(blob, start, end):
+def _download_chunk(
+    blob:storage.blob,
+    start:int,
+    end:int):
+
     """
     Detects if a chunk is compressed by looking for a magic string
     """
@@ -86,11 +101,14 @@ def _download_chunk(blob, start, end):
             pass 
     return chunk
 
+def get_blob(
+    project:str,
+    bucket:str,
+    blob_name:str):
 
-def get_blob(project, bucket, blob_name):
     if not project:
         project = get_project()
     client = storage.Client(project=project)
-    bucket = client.get_bucket(bucket)
-    blob = bucket.get_blob(blob_name)
+    gcs_bucket = client.get_bucket(bucket)
+    blob = gcs_bucket.get_blob(blob_name)
     return blob
