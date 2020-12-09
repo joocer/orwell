@@ -49,42 +49,6 @@ try:
 except ImportError: pass
 
 
-def _worker_thread(
-    data_writer:Writer):
-    """
-    Method to run an a separate thread performing two tasks
-    - when the day changes, it closes the existing partition so a 
-        new one is opened with today's date
-    - to close partitions when new records haven't been recieved
-        for a period of time (default 60 seconds)
-
-    These are done in a separate thread so the 'append' method
-    doesn't need to perform these checks every write.
-    """
-    while data_writer.use_worker_thread:
-        change_partition = False
-        if (time.time_ns() - data_writer.last_write) > (data_writer.wait_time_seconds * 1e9):
-            change_partition = True
-        if not data_writer.formatted_path == datetime.datetime.today().strftime(data_writer.path):
-            change_partition = True
-
-        # close the current partition
-        if change_partition:
-            with threading.Lock():
-                if data_writer.file_writer:
-                    data_writer.on_partition_closed(data_writer.file_writer.filename)
-                    del data_writer.file_writer
-                    data_writer.file_writer = None
-
-        # try flushing writes
-        try:
-            if data_writer.file_writer:
-                data_writer.file_writer.file.flush()
-        except: pass #nosec - if it fails, it doesn't /really/ matter
-
-        time.sleep(1)
-
-
 class Writer():
 
     def __init__(
@@ -217,3 +181,37 @@ def save_file_to_bucket(source_file, project, bucket, path):
     path = path.replace('%date', '%Y-%m-%d')
     blob = bucket.blob(datetime.datetime.today().strftime(path))
     blob.upload_from_filename(source_file)
+
+def _worker_thread(
+    data_writer:Writer):
+    """
+    Method to run an a separate thread performing two tasks
+    - when the day changes, it closes the existing partition so a 
+        new one is opened with today's date
+    - to close partitions when new records haven't been recieved
+        for a period of time (default 60 seconds)
+
+    These are done in a separate thread so the 'append' method
+    doesn't need to perform these checks every write.
+    """
+    while data_writer.use_worker_thread:
+        change_partition = False
+        if (time.time_ns() - data_writer.last_write) > (data_writer.wait_time_seconds * 1e9):
+            change_partition = True
+        if not data_writer.formatted_path == datetime.datetime.today().strftime(data_writer.path):
+            change_partition = True
+
+        # close the current partition
+        if change_partition:
+            with threading.Lock():
+                if data_writer.file_writer:
+                    data_writer.on_partition_closed(data_writer.file_writer.filename)
+                    del data_writer.file_writer
+                    data_writer.file_writer = None
+
+        # try flushing writes
+        try:
+            if data_writer.file_writer:
+                data_writer.file_writer.file.flush()
+        except: pass #nosec - if it fails, it doesn't /really/ matter
+        time.sleep(1)
