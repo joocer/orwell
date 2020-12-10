@@ -67,12 +67,12 @@ def select_all(dummy: Any) -> bool:
 
 
 def select_record_fields(
-        dictset: dict,
+        record: dict,
         fields: List[str]) -> dict:
     """
     Selects a subset of fields from a dictionary
     """
-    return {k: dictset.get(k, None) for k in fields}
+    return {k: record.get(k, None) for k in fields}
 
 
 def order(record: Union[dict, list]) -> Union[dict, list]:
@@ -84,8 +84,8 @@ def order(record: Union[dict, list]) -> Union[dict, list]:
 
 
 def join_dictsets(
-        left: List[dict],
-        right: List[dict],
+        left: Iterator[dict],
+        right: Iterator[dict],
         column: str,
         join_type=JOINS.INNER_JOIN) -> Iterator[dict]:
     """
@@ -117,7 +117,7 @@ def join_dictsets(
 
 
 def union_dictsets(
-        dictset_1: List[dict],
+        dictset_1: Iterator[dict],
         dictset_2: List[dict]) -> Iterator[dict]:
     """
     Append the records from a set of lists together, doesn't ensure columns
@@ -136,7 +136,7 @@ def union_dictsets(
 
 
 def create_index(
-        dictset: List[dict],
+        dictset: Iterator[dict],
         index_column: str) -> dict:
     """
     Create an index of a file to speed up look-ups.
@@ -149,7 +149,7 @@ def create_index(
 
 
 def select_from_dictset(
-        dictset: List[dict],
+        dictset: Iterator[dict],
         columns: List[str] = ['*'],
         condition: Callable = select_all) -> Iterator[dict]:
     """
@@ -169,7 +169,7 @@ def select_from_dictset(
 
 
 def set_column(
-        dictset: List[dict],
+        dictset: Iterator[dict],
         column_name: str,
         setter: Callable) -> Iterator[dict]:
     """
@@ -195,7 +195,7 @@ def set_value(
 
 
 def distinct(
-        dictset: List[dict],
+        dictset: Iterator[dict],
         columns: List[str] = ['*']):
     """
     Removes duplicate records from a dictset
@@ -207,7 +207,7 @@ def distinct(
     def _filter(x):
         return {k: x.get(k, '') for k in columns}
 
-    seen_hashes = {}
+    seen_hashes: dict = {}
     selector = _noop
     if columns != ['*']:
         selector = _filter
@@ -223,7 +223,7 @@ def distinct(
 
 
 def limit(
-        dictset: List[dict],
+        dictset: Iterator[dict],
         limit: int):
     """
     Returns up to 'limit' number of records
@@ -234,6 +234,25 @@ def limit(
             return None
         counter -= 1
         yield record
+
+
+def dictsets_match(
+        dictset_1: Iterator[dict],
+        dictset_2: Iterator[dict]):
+    """
+    Tests if two sets match - this terminates the generators
+    """
+    def _hash_set(dictset: Iterator[dict]):
+        xor = 0
+        for record in dictset:
+            entry = order(record)
+            entry = json_dumper(entry)
+            _hash = hash(entry)
+            xor = xor ^ _hash
+            print(xor)
+        return xor
+
+    return _hash_set(dictset_1) == _hash_set(dictset_2)
 
 
 def generator_chunker(
