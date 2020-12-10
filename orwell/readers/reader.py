@@ -2,7 +2,7 @@
 Reader
 """
 from typing import Callable, Union
-from ..utilities import select_all, select_fields
+from ..helpers.jsonl import select_all, select_record_fields
 from .blob_reader import blob_reader
 import xmltodict  # type:ignore
 import logging

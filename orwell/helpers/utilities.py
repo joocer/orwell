@@ -3,25 +3,8 @@ import json
 from typing import Iterator
 
 
-def select_fields(dic:dict, fields:list) -> dict:
-    """
-    Selects items from a row, if the row doesn't exist, None is used.
-    """
-    return {field: dic.get(field, None) for field in fields}
 
-def select_all(x):
-    return True
 
-def generator_chunker(generator:Iterator, chunk_size:int) -> Iterator:
-    chunk:list = []
-    for item in generator:
-        if len(chunk) >= chunk_size:
-            yield chunk
-            chunk = [item]
-        else:
-            chunk.append(item)
-    if chunk:
-        yield chunk
 
 #def get_view_path(view, date=None, extention=".jsonl"):
 #    if not date:

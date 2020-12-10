@@ -45,6 +45,7 @@ try:
     import ujson as json
 except ImportError:
     import json
+from typing import Iterator
 
 
 INNER_JOIN = 1
@@ -57,11 +58,20 @@ def _select_all(dummy):
     """
     return True
 
+
 def select_record_fields(dic, fields):
     """
     Selects a subset of fields from a dictionary
     """
-    return { k: dic.get(k, None) for k in fields }
+    return {k: dic.get(k, None) for k in fields}
+
+
+def _ordered(self, record):
+    if isinstance(record, dict):
+        return sorted((key, self._ordered(value)) for key, value in record.items())
+    if isinstance(record, list):
+        return sorted((self._ordered(x) for x in record), key=lambda item: '' if not item else item)
+    return record
 
 
 def join_json_lists(left, right, column, join_type=INNER_JOIN):
@@ -160,6 +170,21 @@ def set_value(record, column, setter):
         record[column] = setter
     return record
 
+
+def select_all(x):
+    return True
+
+
+def generator_chunker(generator: Iterator, chunk_size: int) -> Iterator:
+    chunk: list = []
+    for item in generator:
+        if len(chunk) >= chunk_size:
+            yield chunk
+            chunk = [item]
+        else:
+            chunk.append(item)
+    if chunk:
+        yield chunk
 
 
 def save_as_csv(json_list, filename, columns=['first_row'], pipe=False):

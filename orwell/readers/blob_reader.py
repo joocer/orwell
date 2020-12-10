@@ -1,21 +1,23 @@
 try:
     from google.cloud import storage  # type:ignore
-except ImportError: pass
-from ..utilities import get_view_path, get_project
+except ImportError:
+    pass
+from ..helpers.utilities import get_view_path, get_project
 import lzma
 import datetime
 
+
 def blob_reader(
-    view='', 
-    project=None, 
-    bucket=None, 
-    extention=".jsonl",
-    start_date=None, 
-    end_date=None, 
-    chunk_size=16*1024*1024,
-    template="%store/%view/year_%Y/month_%m/day_%d/",
-    store="02_INTERMEDIATE",
-    **kwargs):
+        view='', 
+        project=None, 
+        bucket=None, 
+        extention=".jsonl",
+        start_date=None, 
+        end_date=None, 
+        chunk_size=16*1024*1024,
+        template="%store/%view/year_%Y/month_%m/day_%d/",
+        store="02_INTERMEDIATE",
+        **kwargs):
 
     """
     Blob reader, will iterate over as set of blobs in a path.
@@ -39,11 +41,12 @@ def blob_reader(
             reader = _inner_blob_reader(blob_name=blob.name, project=project, bucket=bucket, chunk_size=chunk_size)
             yield from reader
 
+
 def find_blobs_at_path(
-    project:str,
-    bucket:str,
-    path:str,
-    extention:str):
+        project: str,
+        bucket: str,
+        path: str,
+        extention: str):
 
     client = storage.Client(project=project)
     bucket = client.get_bucket(bucket)
@@ -51,12 +54,13 @@ def find_blobs_at_path(
     blobs = [blob for blob in blobs if blob.name.endswith(extention)]
     yield from blobs
 
+
 def _inner_blob_reader(
-    project:str,
-    bucket:str,
-    blob_name:str,
-    chunk_size:int=16*1024*1024,
-    delimiter:str='\n'):
+        project: str,
+        bucket: str,
+        blob_name: str,
+        chunk_size: int = 16*1024*1024,
+        delimiter: str = '\n'):
 
     """
     Reads lines from an arbitrarily long blob, line by line.
@@ -84,27 +88,29 @@ def _inner_blob_reader(
     if len(carry_forward) > 0:
         yield carry_forward
 
+
 def _download_chunk(
-    blob:storage.blob,
-    start:int,
-    end:int):
+        blob: storage.blob,
+        start: int,
+        end: int):
 
     """
     Detects if a chunk is compressed by looking for a magic string
     """
-    chunk = blob.download_as_string(start=start, end=end) 
+    chunk = blob.download_as_string(start=start, end=end)
     if chunk[:5] == "LZMA:":
         try:
             return lzma.decompress(chunk)
         except lzma.LZMAError:
             # if we fail maybe we're not compressed
-            pass 
+            pass
     return chunk
 
+
 def get_blob(
-    project:str,
-    bucket:str,
-    blob_name:str):
+        project: str,
+        bucket: str,
+        blob_name: str):
 
     if not project:
         project = get_project()
