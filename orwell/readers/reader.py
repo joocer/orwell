@@ -1,8 +1,29 @@
 """
 Reader
+
+Reads records from a data store, opinionated toward Google Cloud Storage
+but a filesystem reader was created primarily to assist with development.
+
+The reader will iterate over a set of files and return them to the caller
+as a single stream of records. The files can be read from a single folder
+or can be matched over a set of date/time formatted folder names. This is
+useful to read over a set of logs. The date range is provided as part of 
+the call; this is essentially a way to partition the data by date/time.
+
+The reader can filter records to return a subset, for json formatted data
+the records can be converted to dictionaries before filtering. json data
+can also be used to select columns, so not all read data is returned.
+
+The reader can also deduplicate the records to only return unique records
+and can limit the number of records so a fixed amount are returned.
+
+The reader does not support aggregations, calculations or grouping of data,
+it is a log reader and returns log entries. The reader can convert a set
+into Pandas dataframe, or the dictset helper library can perform some 
+activities on the set in a more memory efficient manner.
 """
 from typing import Callable, Union
-from ..helpers.jsonl import select_all, select_record_fields
+from ..helpers.dictset import select_all, select_record_fields, distinct
 from .blob_reader import blob_reader
 import xmltodict  # type:ignore
 import logging
@@ -39,7 +60,6 @@ class Reader():
         limit: int = -1,
         condition: Callable = select_all,
         fields: list = ['*'],
-        deduplicate_on: Union[list, None] = None,
         **kwargs):
         """
         Reader accepts a method which iterates over a data source and provides
@@ -55,10 +75,6 @@ class Reader():
         self.fields = fields.copy()
         self.condition: Callable = condition
         self.limit: int = limit
-        self.seen_hashs: dict = {}
-        self.deduplicate_on = deduplicate_on
-        if not self.deduplicate_on:
-            self._is_duplicate = lambda x: False
 
         logger.debug(F"Reader(reader={reader.__name__})")
 
@@ -70,22 +86,8 @@ class Reader():
         for line in Reader("file"):
             print(line)
     """
-    def _is_duplicate(self, record):
-        # select the columns
-        record = {k: record.get(k, '') for k in self.deduplicate_on}
-        # convert to a string
-        record = json_dumper(record)
-        # hash it
-        _hash = hash(record)
-        # test
-        is_duplicate = self.seen_hashs.get(_hash, 0)
-        # add the record to the dupe set
-        if not is_duplicate:
-            self.seen_hashs[_hash] = 1
-        return is_duplicate
-
     def __iter__(self):
-        self.deduplication = {}
+        self.seen_hashs = {}
         return self
 
     def __next__(self):
@@ -100,10 +102,8 @@ class Reader():
             record = self.formatter(record)
             if not self.condition(record):
                 continue
-            if self._is_duplicate(record):
-                continue
             if self.fields != ['*']:
-                record = select_fields(record, self.fields)
+                record = select_record_fields(record, self.fields)
             return record
 
     """
@@ -132,6 +132,9 @@ class Reader():
     Exports
     """
     def to_pandas(self):
+        """
+        Only import Pandas if needed
+        """
         try:
             import pandas as pd # type:ignore
         except ImportError:

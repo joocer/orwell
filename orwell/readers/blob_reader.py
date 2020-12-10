@@ -2,7 +2,6 @@ try:
     from google.cloud import storage  # type:ignore
 except ImportError:
     pass
-from ..helpers.utilities import get_view_path, get_project
 import lzma
 import datetime
 
@@ -112,8 +111,6 @@ def get_blob(
         bucket: str,
         blob_name: str):
 
-    if not project:
-        project = get_project()
     client = storage.Client(project=project)
     gcs_bucket = client.get_bucket(bucket)
     blob = gcs_bucket.get_blob(blob_name)
