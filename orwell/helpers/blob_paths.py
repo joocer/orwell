@@ -34,7 +34,7 @@ class BlobPaths(object):
         return bucket, path, name, ext
 
     @staticmethod
-    def build_path(bucket: str, path: str, date: datetime.date = None):
+    def build_path(path: str, date: datetime.date = None):
 
         if not date:
             date = datetime.datetime.now()
@@ -42,9 +42,9 @@ class BlobPaths(object):
         if not path:
             raise ValueError('Path must have a value')
         if not path[0] == '/':
-            path_string = bucket + '/' + path
+            path_string = path.lstrip('/')
         else:
-            path_string = bucket + path
+            path_string = path
 
         path_string = path_string.replace('%date', '%Y-%m-%d')
         path_string = path_string.replace('%time', '%H%M%S')

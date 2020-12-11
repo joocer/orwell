@@ -4,38 +4,41 @@ except ImportError:
     pass
 import lzma
 import datetime
+from ..helpers.blob_paths import BlobPaths
 
 
 def blob_reader(
-        view='', 
-        project=None, 
-        bucket=None, 
-        extention=".jsonl",
-        start_date=None, 
-        end_date=None, 
+        path: str,
+        project: str,
+        start_date=None,
+        end_date=None,
         chunk_size=16*1024*1024,
-        template="%store/%view/year_%Y/month_%m/day_%d/",
-        store="02_INTERMEDIATE",
         **kwargs):
 
     """
     Blob reader, will iterate over as set of blobs in a path.
     """
+
+    # validate request
+    if not project:
+        raise ValueError('Blob Reader requires Project to be set')
+    if not path:
+        raise ValueError('Blob Reader requires Path to be set')
+
     # if dates aren't provided, use today
     if not end_date:
         end_date = datetime.date.today()
     if not start_date:
         start_date = datetime.date.today()
 
-    # if the project is None, use the current project
-    if not project:
-        project = get_project()
+    bucket, blob_path, name, extention = BlobPaths.get_parts(path)
 
     # cycle through the days, loading each days' file
     for cycle in range(int((end_date - start_date).days) + 1):
         cycle_date = start_date + datetime.timedelta(cycle)
-        cycle_path = get_view_path(view=view, date=cycle_date, store=store, extention=extention, template=template)
+        cycle_path = BlobPaths.build_path(path=blob_path, date=cycle_date)
         blobs_at_path = find_blobs_at_path(project=project, bucket=bucket, path=cycle_path, extention=extention)
+        blobs_at_path = list(blobs_at_path)
         for blob in blobs_at_path:
             reader = _inner_blob_reader(blob_name=blob.name, project=project, bucket=bucket, chunk_size=chunk_size)
             yield from reader
@@ -48,9 +51,10 @@ def find_blobs_at_path(
         extention: str):
 
     client = storage.Client(project=project)
-    bucket = client.get_bucket(bucket)
-    blobs = client.list_blobs(bucket_or_name=bucket, prefix=path)
-    blobs = [blob for blob in blobs if blob.name.endswith(extention)]
+    gcs_bucket = client.get_bucket(bucket)
+    blobs = client.list_blobs(bucket_or_name=gcs_bucket, prefix=path)
+    if extention:
+        blobs = [blob for blob in blobs if blob.name.endswith(extention)]
     yield from blobs
 
 

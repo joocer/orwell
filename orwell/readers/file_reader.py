@@ -2,13 +2,13 @@ from typing import Iterator
 
 
 def file_reader(
-        file_name: str = "",
+        path: str = "",
         chunk_size: int = 16*1024*1024,
         delimiter: str = "\n") -> Iterator:
     """
     Reads an arbitrarily long file, line by line
     """
-    with open(file_name, "r", encoding="utf8") as f:
+    with open(path, "r", encoding="utf8") as f:
         carry_forward = ""
         chunk = "INITIALIZED"
         while len(chunk) > 0:

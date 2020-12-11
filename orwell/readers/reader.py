@@ -20,7 +20,7 @@ into Pandas dataframe, or the dictset helper library can perform some
 activities on the set in a more memory efficient manner.
 """
 from typing import Callable, Union
-from ..helpers.dictset import select_all, select_record_fields, distinct
+from ..dictset import select_all, select_record_fields, distinct
 from .blob_reader import blob_reader
 import xmltodict  # type:ignore
 import logging
@@ -52,7 +52,8 @@ class Reader():
 
     def __init__(
         self,
-        reader: Callable = blob_reader, 
+        path: str,
+        reader: Callable = blob_reader,
         data_format: str = "json",
         limit: int = -1,
         condition: Callable = select_all,
@@ -64,7 +65,7 @@ class Reader():
         returned. The default reader is a GCS blob reader, a file system
         reader is also implemented.
         """
-        self.reader = reader(**kwargs)
+        self.reader = reader(path=path, **kwargs)
         self.format = data_format
         self.formatter = FORMATTERS.get(self.format.lower())
         if not self.formatter:

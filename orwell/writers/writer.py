@@ -35,18 +35,18 @@ import os
 from pathlib import Path
 import threading
 from .blob_writer import blob_writer
-from typing import Callable
-
 import json
 json_dumps = json.dumps
 try:
     import orjson
     json_dumps = orjson.dumps  # type:ignore
-except ImportError: pass
+except ImportError:
+    pass
 try:
     import ujson
-    json_dumps = ujson.dumps # type:ignore
-except ImportError: pass
+    json_dumps = ujson.dumps  # type:ignore
+except ImportError:
+    pass
 
 
 class Writer():
@@ -131,7 +131,6 @@ class Writer():
                 del self.file_writer
                 self.file_writer = None
 
-
     def __enter__(self):
         return self
 
@@ -156,34 +155,22 @@ class _PartFileWriter():
                         mode="x", 
                         encoding=enconding)
         self.commit_on_write = commit_on_write
+
     def append(self, record=""):
         self.file.write(record)
         if self.commit_on_write:
             self.file.flush()
+
     def __del__(self):
         try:
             self.file.flush()
             self.file.close()
-        except: pass #nosec ignore if it fails 
+        except Exception:
+            pass  # nosec ignore if it fails
 
-def save_file_to_bucket(source_file, project, bucket, path):
-    # to be deprecated
-    """
-    Copy a local file to a storage bucket
-    
-    Parameters:
-        source_file: file to be copied
-        bucket_name: destination storage bucket
-        destination_file: destination file within bucket, including any pseudo path
-    """
-    client = storage.Client(project=project)
-    bucket = client.get_bucket(bucket)
-    path = path.replace('%date', '%Y-%m-%d')
-    blob = bucket.blob(datetime.datetime.today().strftime(path))
-    blob.upload_from_filename(source_file)
 
 def _worker_thread(
-    data_writer:Writer):
+        data_writer: Writer):
     """
     Method to run an a separate thread performing two tasks
     - when the day changes, it closes the existing partition so a 
@@ -213,5 +200,6 @@ def _worker_thread(
         try:
             if data_writer.file_writer:
                 data_writer.file_writer.file.flush()
-        except: pass #nosec - if it fails, it doesn't /really/ matter
+        except Exception:
+            pass  # nosec - if it fails, it doesn't /really/ matter
         time.sleep(1)

@@ -57,9 +57,9 @@ def test_blob_paths_get_paths():
 def test_blob_paths_builder():
 
     template = 'year_%Y/month_%m/day_%d/%date_%time.%f'
-    path = BlobPaths.build_path('bucket', template, datetime.datetime(2000, 9, 19, 1, 36, 42, 365))
+    path = BlobPaths.build_path(template, datetime.datetime(2000, 9, 19, 1, 36, 42, 365))
 
-    assert path == "bucket/year_2000/month_09/day_19/2000-09-19_013642.000365"
+    assert path == "year_2000/month_09/day_19/2000-09-19_013642.000365"
 
 
 if __name__ == "__main__":
