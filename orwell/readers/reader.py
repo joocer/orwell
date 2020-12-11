@@ -14,9 +14,6 @@ The reader can filter records to return a subset, for json formatted data
 the records can be converted to dictionaries before filtering. json data
 can also be used to select columns, so not all read data is returned.
 
-The reader can also deduplicate the records to only return unique records
-and can limit the number of records so a fixed amount are returned.
-
 The reader does not support aggregations, calculations or grouping of data,
 it is a log reader and returns log entries. The reader can convert a set
 into Pandas dataframe, or the dictset helper library can perform some 

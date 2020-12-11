@@ -10,10 +10,12 @@ processes on the dataset, row at a time.
 
 Methods provide a limited approximation of SQL functionality:
 
-SELECT - select_json_list
-UNION  - union_json_lists
-WHERE  - select_json_list
-JOIN   - join_json_lists
+SELECT   - select_from_dictset
+UNION    - union_dictsets
+WHERE    - select_from_dictset
+JOIN     - join_dictsets
+DISTINCT - disctinct
+LIMIT    - limit
 
 All methods return generators, which mean they can only be iterated once, to
 iterate again they need to be regenerated. create_index is the only exception,
@@ -25,15 +27,15 @@ values, however this may cause problems if the list is large.
 Example usage:
 
 # open two jsonl files
-list1 = open_json_list_file('list1.jsonl')
-list2 = open_json_list_file('list2.jsonl')
+list1 = open_dictset_file('list1.jsonl')
+list2 = open_dictset_file('list2.jsonl')
 
 # filter the two lists
-filtered_list1 = select_json_list(list1, ['id', 'name'], lambda x: x['height'] > 2)
-filtered_list2 = select_json_list(list2, ['id', 'last_seen'])
+filtered_list1 = select_from_dictset(list1, ['id', 'name'], lambda x: x['height'] > 2)
+filtered_list2 = select_from_dictset(list2, ['id', 'last_seen'])
 
 # join the two lists on id
-for record in join_json_lists(filtered_list1, filtered_list2, 'id'):
+for record in join_dictsets(filtered_list1, filtered_list2, 'id'):
     print(record)
 
 """
@@ -240,7 +242,7 @@ def dictsets_match(
         dictset_1: Iterator[dict],
         dictset_2: Iterator[dict]):
     """
-    Tests if two sets match - this terminates the generators
+    Tests if two sets match - this terminates generators
     """
     def _hash_set(dictset: Iterator[dict]):
         xor = 0
@@ -249,7 +251,6 @@ def dictsets_match(
             entry = json_dumper(entry)
             _hash = hash(entry)
             xor = xor ^ _hash
-            print(xor)
         return xor
 
     return _hash_set(dictset_1) == _hash_set(dictset_2)
@@ -267,34 +268,3 @@ def generator_chunker(
             chunk.append(item)
     if chunk:
         yield chunk
-
-
-def save_as_csv(json_list, filename, columns=['first_row'], pipe=False):
-    """
-    Saves a json_list as a CSV
-
-    By default it gets the list of columns from the first_row, otherwise these
-    columns can be manually specified. Missing values get set to None, columns
-    are trimmed to the specified set of columns (or first row's set).
-    """
-    import csv
-
-    with open (filename, 'w', encoding='utf8', newline='') as file:
-        
-        # get the first record
-        record = json_list.__next__()
-
-        # get the columns from the record
-        if columns==['first_row']:
-            columns=record.keys()
-        
-        # write the headers
-        csv_file = csv.DictWriter(file, fieldnames=columns)
-        csv_file.writeheader()
-
-        # cycle the rest of the file
-        while record:
-            record = select_record_fields(record, columns)
-            csv_file.writerow(record)
-            record = json_list.__next__()
-
