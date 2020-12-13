@@ -8,7 +8,20 @@ The reader can read across multiple blobs in a GCS bucket with filter, select an
 The writer writes to buckets, with tempfile caching, and data validation functionality.
 
 ## How Do I Use It?
-Coming Later
+
+**READER**
+~~~
+critical_errors = Reader(
+        select=['server', 'error_level'],
+        from_path="error_logs/year_%Y/month_%m/day_%d/",
+        where=lambda r: r['error_level'] == 'critical',
+        date_range=(datetime.date(2020, 1, 1), None)
+    )
+critical_errors.to_pandas()
+~~~
+
+**WRITER**
+TBC
 
 ## How Do I Get It?
 ~~~
