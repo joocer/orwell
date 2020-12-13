@@ -5,13 +5,13 @@ except ImportError:
 import lzma
 import datetime
 from ..helpers.blob_paths import BlobPaths
+from typing import Tuple, Union, Optional
 
 
 def blob_reader(
         path: str,
         project: str,
-        start_date=None,
-        end_date=None,
+        date_range: Tuple[Optional[datetime.date], Optional[datetime.date]] = (None, None),
         chunk_size=16*1024*1024,
         **kwargs):
 
@@ -26,6 +26,7 @@ def blob_reader(
         raise ValueError('Blob Reader requires Path to be set')
 
     # if dates aren't provided, use today
+    start_date, end_date = date_range
     if not end_date:
         end_date = datetime.date.today()
     if not start_date:

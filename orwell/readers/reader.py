@@ -19,11 +19,12 @@ it is a log reader and returns log entries. The reader can convert a set
 into Pandas dataframe, or the dictset helper library can perform some 
 activities on the set in a more memory efficient manner.
 """
-from typing import Callable, Union
-from ..dictset import select_all, select_record_fields, distinct
+from typing import Callable, Tuple, Optional
+from ..dictset import select_all, select_record_fields
 from .blob_reader import blob_reader
 import xmltodict  # type:ignore
 import logging
+import datetime
 import json
 json_parser: Callable = json.loads
 json_dumper: Callable = json.dumps
@@ -52,26 +53,41 @@ class Reader():
 
     def __init__(
         self,
-        path: str,
+        select: list = ['*'],
+        from_path: str = None,
+        where: Callable = select_all,
+        limit: int = -1,
         reader: Callable = blob_reader,
         data_format: str = "json",
-        limit: int = -1,
-        condition: Callable = select_all,
-        fields: list = ['*'],
+        date_range: Tuple[Optional[datetime.date], Optional[datetime.date]] = (None, None),
+        cursor: str = '',  # __
         **kwargs):
         """
         Reader accepts a method which iterates over a data source and provides
         functionality to filter, select and truncate records which are
         returned. The default reader is a GCS blob reader, a file system
         reader is also implemented.
+
+        Reader roughly follows a SQL Select:
+
+        SELECT column FROM data.store WHERE size == 'large'
+
+        Reader(
+            select=['column'],
+            from_path='data/store',
+            where=lambda record: record['size'] == 'large',
+            limit=1
+        )
+
+        It's the data is automatically partitioned by date.
         """
-        self.reader = reader(path=path, **kwargs)
+        self.reader = reader(path=from_path, date_range=date_range, **kwargs)
         self.format = data_format
         self.formatter = FORMATTERS.get(self.format.lower())
         if not self.formatter:
             raise TypeError(F"data format unsupported: {self.format}.")
-        self.fields = fields.copy()
-        self.condition: Callable = condition
+        self.select = select.copy()
+        self.where: Callable = where
         self.limit: int = limit
 
         logger.debug(F"Reader(reader={reader.__name__})")
@@ -98,10 +114,10 @@ class Reader():
         while True:
             record = self.reader.__next__()
             record = self.formatter(record)
-            if not self.condition(record):
+            if not self.where(record):
                 continue
-            if self.fields != ['*']:
-                record = select_record_fields(record, self.fields)
+            if self.select != ['*']:
+                record = select_record_fields(record, self.select)
             return record
 
     """
@@ -134,7 +150,22 @@ class Reader():
         Only import Pandas if needed
         """
         try:
-            import pandas as pd # type:ignore
+            import pandas as pd  # type:ignore
         except ImportError:
             raise Exception("Pandas must be installed to use 'to_pandas'")
         return pd.DataFrame(self)
+
+        """
+        cursor = {
+            select: list = ['*'],
+            from_path: str = None,
+            where: Callable = select_all,
+            limit: int = -1,
+            reader: Callable = blob_reader,
+            data_format: str = "json",
+            date_range: Tuple[datetime.date] = (None, None),
+
+            current_file:
+            current_index:
+        }
+        """

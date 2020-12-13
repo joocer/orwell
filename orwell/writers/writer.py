@@ -165,8 +165,8 @@ class _PartFileWriter():
         try:
             self.file.flush()
             self.file.close()
-        except Exception:
-            pass  # nosec ignore if it fails
+        except Exception:  # nosec ignore if it fails
+            pass
 
 
 def _worker_thread(
@@ -200,6 +200,6 @@ def _worker_thread(
         try:
             if data_writer.file_writer:
                 data_writer.file_writer.file.flush()
-        except Exception:
-            pass  # nosec - if it fails, it doesn't /really/ matter
+        except Exception:  # nosec - if it fails, it doesn't /really/ matter
+            pass
         time.sleep(1)
