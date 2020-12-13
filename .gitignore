@@ -129,3 +129,6 @@ dmypy.json
 .pyre/
 
 scratch/
+sample_data/**
+**.lzma
+**.jsonl

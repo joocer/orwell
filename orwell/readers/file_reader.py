@@ -9,6 +9,7 @@ of the files in those folders and present the content back, line by line.
 from typing import Iterator, Tuple, Optional, List, Union
 import datetime
 from ..helpers.blob_paths import BlobPaths
+import lzma
 
 
 def file_reader(
@@ -18,21 +19,21 @@ def file_reader(
         extention: str = '.jsonl',
         delimiter: str = "\n") -> Iterator:
 
-    def _find_files_at_path(path:str, extention: str) -> List[str]:
+    def _find_files_at_path(path: str, extention: str) -> List[str]:
         """ Helper function to get a list of files in a given path """
         from os import listdir
         from os.path import isfile, join, exists
         if exists(path):  # skip non-existant folders
-            return [join(path, f) for f in listdir(path) if isfile(join(path, f)) and f.endswith(extention)]
+            return [join(path, f) for f in listdir(path) if isfile(join(path, f)) and extention in f]
         return []
 
-    def _inner_file_reader(filename: str, chunk_size: int):
+    def _inner_file_reader(file_name: str, chunk_size: int):
         """
         This is the guts of the reader - it opens a file and reads through it
         chunk by chunk. This allows huge files to be processed as only a chunk
         at a time is in memory.
         """
-        with open(filename, "r", encoding="utf8") as f:
+        with open(file_name, 'r', encoding="utf8") as f:
             carry_forward = ""
             chunk = "INITIALIZED"
             while len(chunk) > 0:
@@ -43,6 +44,10 @@ def file_reader(
                 yield from lines
             if carry_forward:
                 yield carry_forward
+
+    def _inner_compressed_file_reder(file_name: str):
+        with lzma.open(file_name, 'r') as f:
+            yield from f.readlines()
 
     # if dates aren't provided, use today
     start_date, end_date = date_range
@@ -60,5 +65,8 @@ def file_reader(
         files_at_path = _find_files_at_path(path=cycle_path, extention=extention)
         # for each file, read it and return the rows
         for file in files_at_path:
-            reader = _inner_file_reader(filename=file, chunk_size=chunk_size)
+            if file.endswith('.lzma'):
+                reader = _inner_compressed_file_reder(file_name=file)
+            else:
+                reader = _inner_file_reader(file_name=file, chunk_size=chunk_size)
             yield from reader

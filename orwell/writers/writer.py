@@ -28,39 +28,32 @@ the string will be formatted before being created into folders. The
 changing of dates is handled by the worker thread, this may lag a 
 second before it forces the folder to change.
 """
-
-import datetime
+import lzma
 import time
 import os
-from pathlib import Path
 import threading
+import tempfile
 from .blob_writer import blob_writer
-import json
-json_dumps = json.dumps
+from typing import Callable
+from gva.data.validator import Schema
 try:
-    import orjson
-    json_dumps = orjson.dumps  # type:ignore
+    import ujson as json
 except ImportError:
-    pass
-try:
-    import ujson
-    json_dumps = ujson.dumps  # type:ignore
-except ImportError:
-    pass
+    import json
 
 
 class Writer():
 
     def __init__(
         self,
-        writer=blob_writer,
-        path="year_%Y/month_%m/day_%d",
-        partition_size=50000,
-        commit_on_write=False,
-        schema=None,
-        use_worker_thread=True,
-        wait_time_seconds=60,
-        compress=False,
+        writer: Callable = blob_writer,
+        to_path: str = 'year_%Y/month_%m/day_%d',
+        partition_size: int = 8*1024*1024,
+        schema: Schema = None,
+        commit_on_write: bool = False,
+        compress: bool = False,
+        use_worker_thread: bool = True,
+        idle_timeout_seconds: int = 300,
         **kwargs):
         """
         DataWriter
@@ -80,28 +73,36 @@ class Writer():
             regardless of the records
         - compress: compress the completed file using LZMA
         """
-        self.path = path
+        self.to_path = to_path
         self.partition_size = partition_size
-        self.records_to_write_in_partition = partition_size
+        self.bytes_left_to_write_in_partition = partition_size
         self.schema = schema
         self.commit_on_write = commit_on_write
         self.file_writer = None
         self.last_write = time.time_ns()
-        self.wait_time_seconds = wait_time_seconds
+        self.idle_timeout_seconds = idle_timeout_seconds
         self.formatted_path = ""
         self.use_worker_thread = use_worker_thread
         self.writer = writer
         self.kwargs = kwargs
+        self.compress = compress
 
-        if compress:
-            raise NotImplementedError("Compress isn't implemented")
+        # end compressed files with .lzma
+        if self.compress and not self.to_path.endswith('.lzma'):
+            self.to_path += '.lzma'
 
         if use_worker_thread:
             self.thread = threading.Thread(target=_worker_thread, args=(self,))
             self.thread.daemon = True
             self.thread.start()
 
-    def append(self, record={}):
+    def _get_temp_file_name(self):
+        file = tempfile.NamedTemporaryFile()
+        file_name = file.name
+        file.close()
+        return file_name
+
+    def append(self, record: dict = {}):
         """
         Saves new entries to the partition; creating a new partition
         if one isn't active.
@@ -109,57 +110,83 @@ class Writer():
         # this is a killer - check the new record conforms to the
         # schema before bothering with anything else
         if self.schema:
-            self.schema.validate(subject=record, raise_exception=True)
+            if not self.schema.validate(subject=record, raise_exception=False):
+                print('FAILED:', record)
 
         with threading.Lock():
+            # serialize the record
+            serialized = json.dumps(record) + '\n'
+            len_serial = len(serialized)
+
+            # if this write would exceed the partition
+            self.bytes_left_to_write_in_partition -= len_serial
+            if self.bytes_left_to_write_in_partition < 0:
+                if len_serial > self.partition_size:
+                    raise Exception('Record size is larger than partition.')
+                self.on_partition_closed()
+
             self.last_write = time.time_ns()
+
             # if we don't have a current file to write to, create one
             if not self.file_writer:
-                self.formatted_path = datetime.datetime.today().strftime(self.path)
-                path = Path(self.formatted_path)
-                os.makedirs(path, exist_ok=True)
-                filename = path / (str(time.time_ns()) + ".jsonl")
-                self.file_writer = _PartFileWriter(filename=filename, 
-                            commit_on_write=self.commit_on_write)
-                self.records_to_write_in_partition = self.partition_size
+                self.file_name = self._get_temp_file_name()
+                self.file_writer = _PartFileWriter(
+                        file_name=self.file_name,
+                        commit_on_write=self.commit_on_write,
+                        compress=self.compress)
+                self.bytes_left_to_write_in_partition = self.partition_size
+
             # write the record to the file
-            self.file_writer.append(json_dumps(record).decode('utf8') + "\n")
-            # close the partition when the record count is reached
-            self.records_to_write_in_partition -= 1
-            if self.records_to_write_in_partition == 0:
-                self.on_partition_closed(self.file_writer.filename)
-                del self.file_writer
-                self.file_writer = None
+            self.file_writer.append(serialized)
 
     def __enter__(self):
         return self
 
     def __exit__(self, type, value, traceback):
-        pass
+        self.on_partition_closed()
 
-    def on_partition_closed(self, partition_file):
-        self.writer()
+    def on_partition_closed(self):
+        if self.file_writer:
+            self.file_writer.finalize()
+        self.writer(
+            source_file_name=self.file_name,
+            target_path=self.to_path,
+            **self.kwargs)
+        try:
+            os.remove(self.file_name)
+        except OSError:
+            pass
+        self.file_writer = None
 
     def __del__(self):
+        self.on_partition_closed()
         self.use_worker_thread = False
+
+    def finalize(self):
+        if self.file_writer:
+            self.on_partition_closed()
 
 
 class _PartFileWriter():
     """ simple wrapper for file writing """
-    def __init__(self, 
-                filename="", 
-                commit_on_write=False, 
-                enconding="utf8"):
-        self.filename = filename
-        self.file = open(file=filename, 
-                        mode="x", 
-                        encoding=enconding)
+    def __init__(
+            self,
+            file_name: str = None,
+            commit_on_write: bool = False,
+            compress: bool = False):
+        self.compress = compress
+        self.file = open(file_name, mode='wb')
+        if compress:
+            self.file = lzma.open(self.file, mode='wb')
         self.commit_on_write = commit_on_write
 
-    def append(self, record=""):
-        self.file.write(record)
+    def append(self, record: str = ""):
+        self.file.write(record.encode())
         if self.commit_on_write:
             self.file.flush()
+
+    def finalize(self):
+        self.file.close()
 
     def __del__(self):
         try:
@@ -183,17 +210,16 @@ def _worker_thread(
     """
     while data_writer.use_worker_thread:
         change_partition = False
-        if (time.time_ns() - data_writer.last_write) > (data_writer.wait_time_seconds * 1e9):
+        if (time.time_ns() - data_writer.last_write) > (data_writer.idle_timeout_seconds * 1e9):
             change_partition = True
-        if not data_writer.formatted_path == datetime.datetime.today().strftime(data_writer.path):
-            change_partition = True
+#        if not data_writer.formatted_path == datetime.datetime.today().strftime(data_writer.path):
+#            change_partition = True
 
         # close the current partition
         if change_partition:
             with threading.Lock():
                 if data_writer.file_writer:
-                    data_writer.on_partition_closed(data_writer.file_writer.filename)
-                    del data_writer.file_writer
+                    data_writer.on_partition_closed()
                     data_writer.file_writer = None
 
         # try flushing writes

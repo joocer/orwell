@@ -55,7 +55,7 @@ def find_blobs_at_path(
     gcs_bucket = client.get_bucket(bucket)
     blobs = client.list_blobs(bucket_or_name=gcs_bucket, prefix=path)
     if extention:
-        blobs = [blob for blob in blobs if blob.name.endswith(extention)]
+        blobs = [blob for blob in blobs if extention in blob.name]
     yield from blobs
 
 
@@ -102,7 +102,7 @@ def _download_chunk(
     Detects if a chunk is compressed by looking for a magic string
     """
     chunk = blob.download_as_string(start=start, end=end)
-    if chunk[:5] == "LZMA:":
+    if blob.name.endswith('.lzma'):
         try:
             return lzma.decompress(chunk)
         except lzma.LZMAError:
