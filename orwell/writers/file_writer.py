@@ -28,8 +28,6 @@ def file_writer(
 
     bucket, path, filename, ext = BlobPaths.get_parts(unique_filename)
     os.makedirs(bucket + '/' + path, exist_ok=True)
-
-    print(source_file_name, '=>', unique_filename)
-
+    
     # save
     return shutil.copy(source_file_name, unique_filename)
