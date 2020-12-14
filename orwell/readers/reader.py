@@ -90,7 +90,7 @@ class Reader():
         self.where: Callable = where
         self.limit: int = limit
 
-        logger.debug(F"Reader(reader={reader.__name__})")
+        logger.debug(F"Reader(reader={reader.__name__}, from_path='{from_path}', date_range={date_range})")
 
     """
     Iterable

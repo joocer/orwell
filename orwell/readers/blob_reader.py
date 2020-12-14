@@ -6,6 +6,7 @@ import lzma
 import datetime
 from ..helpers.blob_paths import BlobPaths
 from typing import Tuple, Union, Optional
+import gva.logging
 
 
 def blob_reader(
@@ -18,6 +19,7 @@ def blob_reader(
     """
     Blob reader, will iterate over as set of blobs in a path.
     """
+    logger = gva.logging.get_logger()
 
     # validate request
     if not project:
@@ -41,6 +43,7 @@ def blob_reader(
         blobs_at_path = find_blobs_at_path(project=project, bucket=bucket, path=cycle_path, extention=extention)
         blobs_at_path = list(blobs_at_path)
         for blob in blobs_at_path:
+            logger.debug(F"Reading from blob: {blob.name}")
             reader = _inner_blob_reader(blob_name=blob.name, project=project, bucket=bucket, chunk_size=chunk_size)
             yield from reader
 
