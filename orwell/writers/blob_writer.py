@@ -7,7 +7,8 @@ except ImportError:
 
 def blob_writer(
         project: str = None,
-        path: str = None):
+        path: str = None,
+        **kwargs):
 
 
     bucket, gcs_path, filename, extention = BlobPaths.split_filename(path)

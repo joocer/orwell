@@ -43,7 +43,6 @@ def blob_reader(
         blobs_at_path = find_blobs_at_path(project=project, bucket=bucket, path=cycle_path, extention=extention)
         blobs_at_path = list(blobs_at_path)
         for blob in blobs_at_path:
-            logger.debug(F"Reading from blob: {blob.name}")
             reader = _inner_blob_reader(blob_name=blob.name, project=project, bucket=bucket, chunk_size=chunk_size)
             yield from reader
 

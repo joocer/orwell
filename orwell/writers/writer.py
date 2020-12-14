@@ -81,15 +81,10 @@ class Writer():
         self.file_writer = None
         self.last_write = time.time_ns()
         self.idle_timeout_seconds = idle_timeout_seconds
-        self.formatted_path = ""
         self.use_worker_thread = use_worker_thread
         self.writer = writer
         self.kwargs = kwargs
         self.compress = compress
-
-        # end compressed files with .lzma
-        if self.compress and not self.to_path.endswith('.lzma'):
-            self.to_path += '.lzma'
 
         if use_worker_thread:
             self.thread = threading.Thread(target=_worker_thread, args=(self,))
@@ -97,9 +92,13 @@ class Writer():
             self.thread.start()
 
     def _get_temp_file_name(self):
-        file = tempfile.NamedTemporaryFile()
+        file = tempfile.NamedTemporaryFile(prefix='gva-', delete=True)
         file_name = file.name
         file.close()
+        try:
+            os.remove(file_name)
+        except OSError:
+            pass
         return file_name
 
     def append(self, record: dict = {}):
@@ -111,21 +110,22 @@ class Writer():
         # schema before bothering with anything else
         if self.schema:
             if not self.schema.validate(subject=record, raise_exception=False):
-                print('FAILED:', record)
+                print(F'Validation Failed ({self.schema.last_error}):', record)
+                return False
+
+        self.last_write = time.time_ns()
+
+        # serialize the record
+        serialized = json.dumps(record) + '\n'
+        len_serial = len(serialized)
 
         with threading.Lock():
-            # serialize the record
-            serialized = json.dumps(record) + '\n'
-            len_serial = len(serialized)
-
             # if this write would exceed the partition
             self.bytes_left_to_write_in_partition -= len_serial
-            if self.bytes_left_to_write_in_partition < 0:
+            if self.bytes_left_to_write_in_partition <= 0:
                 if len_serial > self.partition_size:
                     raise Exception('Record size is larger than partition.')
                 self.on_partition_closed()
-
-            self.last_write = time.time_ns()
 
             # if we don't have a current file to write to, create one
             if not self.file_writer:
@@ -139,6 +139,8 @@ class Writer():
             # write the record to the file
             self.file_writer.append(serialized)
 
+        return True
+
     def __enter__(self):
         return self
 
@@ -151,6 +153,7 @@ class Writer():
         self.writer(
             source_file_name=self.file_name,
             target_path=self.to_path,
+            add_extention='.lzma' if self.compress else '',
             **self.kwargs)
         try:
             os.remove(self.file_name)
@@ -168,7 +171,7 @@ class Writer():
 
 
 class _PartFileWriter():
-    """ simple wrapper for file writing """
+    """ simple wrapper for file writing to a temp file """
     def __init__(
             self,
             file_name: str = None,
@@ -186,6 +189,7 @@ class _PartFileWriter():
             self.file.flush()
 
     def finalize(self):
+        self.file.flush()
         self.file.close()
 
     def __del__(self):
@@ -196,31 +200,26 @@ class _PartFileWriter():
             pass
 
 
-def _worker_thread(
-        data_writer: Writer):
+def _worker_thread(data_writer: Writer):
     """
-    Method to run an a separate thread performing two tasks
-    - when the day changes, it closes the existing partition so a 
-        new one is opened with today's date
-    - to close partitions when new records haven't been recieved
-        for a period of time (default 60 seconds)
+    Method to run an a separate thread performing the following tasks
 
-    These are done in a separate thread so the 'append' method
-    doesn't need to perform these checks every write.
+    - when the day changes, it closes the existing partition so a new one is
+      opened with today's date
+    - close partitions when new records haven't been recieved for a period of
+      time (default 300 seconds)
+    - attempt to flush writes to disk regularly
+
+    These are done in a separate thread so the 'append' method doesn't need to
+    perform these checks every write - it can just assume they are being
+    handled and focus on writes
     """
     while data_writer.use_worker_thread:
-        change_partition = False
         if (time.time_ns() - data_writer.last_write) > (data_writer.idle_timeout_seconds * 1e9):
-            change_partition = True
+            with threading.Lock():
+                data_writer.on_partition_closed()
 #        if not data_writer.formatted_path == datetime.datetime.today().strftime(data_writer.path):
 #            change_partition = True
-
-        # close the current partition
-        if change_partition:
-            with threading.Lock():
-                if data_writer.file_writer:
-                    data_writer.on_partition_closed()
-                    data_writer.file_writer = None
 
         # try flushing writes
         try:
