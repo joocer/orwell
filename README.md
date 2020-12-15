@@ -10,7 +10,7 @@ The writer writes to buckets, with tempfile caching, and data validation functio
 ## How Do I Use It?
 
 **READER**
-~~~
+~~~python
 critical_errors = Reader(
         select=['server', 'error_level'],
         from_path="error_logs/year_%Y/month_%m/day_%d/",
@@ -21,7 +21,12 @@ critical_errors.to_pandas()
 ~~~
 
 **WRITER**
-TBC
+~~~python
+writer = Writer(
+        to_path="error_logs/"
+)
+writer.append({"server": "files", "error_level": "debug", "message", "power on"})
+~~~
 
 ## How Do I Get It?
 ~~~
