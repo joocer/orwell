@@ -6,6 +6,9 @@ class BlobPaths(object):
     @staticmethod
     def split_filename(filename: str):
         """ see test cases for all handled edge cases """
+        if not filename:
+            raise ValueError('split_filename: filename must have a value')
+
         ext = ''
         name = ''
         parts = filename.split('.')
@@ -27,7 +30,10 @@ class BlobPaths(object):
 
     @staticmethod
     def get_parts(path_string: str):
-        parts = path_string.split('/')
+        if not path_string:
+            raise ValueError('get_parts: path_string must have a value')
+
+        parts = str(path_string).split('/')
         bucket = parts.pop(0)
         name, ext = BlobPaths.split_filename(parts.pop())
         path = '/'.join(parts) + '/'
@@ -40,7 +46,7 @@ class BlobPaths(object):
             date = datetime.datetime.now()
 
         if not path:
-            raise ValueError('Path must have a value')
+            raise ValueError('build_path: path must have a value')
         if not path[0] == '/':
             path_string = path.lstrip('/')
         else:

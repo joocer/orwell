@@ -53,7 +53,7 @@ class Writer():
         commit_on_write: bool = False,
         compress: bool = False,
         use_worker_thread: bool = True,
-        idle_timeout_seconds: int = 300,
+        idle_timeout_seconds: int = 60,
         **kwargs):
         """
         DataWriter
@@ -177,7 +177,6 @@ class _PartFileWriter():
             file_name: str = None,
             commit_on_write: bool = False,
             compress: bool = False):
-        self.compress = compress
         self.file = open(file_name, mode='wb')
         if compress:
             self.file = lzma.open(self.file, mode='wb')
@@ -186,18 +185,20 @@ class _PartFileWriter():
     def append(self, record: str = ""):
         self.file.write(record.encode())
         if self.commit_on_write:
-            self.file.flush()
+            try:
+                self.file.flush()
+            except ValueError:
+                pass
 
     def finalize(self):
-        self.file.flush()
-        self.file.close()
-
-    def __del__(self):
         try:
             self.file.flush()
             self.file.close()
-        except Exception:  # nosec ignore if it fails
+        except Exception:
             pass
+
+    def __del__(self):
+        self.finalize()
 
 
 def _worker_thread(data_writer: Writer):
@@ -225,6 +226,6 @@ def _worker_thread(data_writer: Writer):
         try:
             if data_writer.file_writer:
                 data_writer.file_writer.file.flush()
-        except Exception:  # nosec - if it fails, it doesn't /really/ matter
+        except ValueError:  # nosec - if it fails, it doesn't /really/ matter
             pass
         time.sleep(1)
