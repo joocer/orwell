@@ -34,12 +34,12 @@ import os
 import threading
 import tempfile
 from .blob_writer import blob_writer
-from typing import Callable
-from gva.data.validator import Schema
+from typing import Callable, Optional, Any
+from gva.data.validator import Schema  # type:ignore
 try:
     import ujson as json
 except ImportError:
-    import json
+    import json  # type:ignore
 
 
 class Writer():
@@ -58,19 +58,17 @@ class Writer():
         """
         DataWriter
 
-        parameters:
+        Parameters:
         - path: the path to save records to, this is a folder name
-        - partition_size: the number of records per partition
-            (-1) is unbounded
-        - commit_on_write: commit rather than cache writes - is 
-            slower but less chance of loss of data
-        - schema: Schema object - if set records are validated 
-            before being written
-        - use_worker_thread: creates a thread which performs 
-            regular checks and corrections
-        - wait_time_seconds: the time with no new writes to a 
-            partition before closing it and creating a new partition
-            regardless of the records
+        - partition_size: the number of records per partition (-1) is unbounded
+        - commit_on_write: commit rather than cache writes - is slower but less
+          chance of loss of data
+        - schema: Schema object - if set records are validated before being
+          written
+        - use_worker_thread: creates a thread which performs regular checks
+          and corrections
+        - idle_timeout_seconds: the time with no new writes to a partition before
+          closing it and creating a new partition regardless of the records
         - compress: compress the completed file using LZMA
         """
         self.to_path = to_path
@@ -78,7 +76,7 @@ class Writer():
         self.bytes_left_to_write_in_partition = partition_size
         self.schema = schema
         self.commit_on_write = commit_on_write
-        self.file_writer = None
+        self.file_writer: Optional[_PartFileWriter] = None
         self.last_write = time.time_ns()
         self.idle_timeout_seconds = idle_timeout_seconds
         self.use_worker_thread = use_worker_thread
@@ -108,10 +106,9 @@ class Writer():
         """
         # this is a killer - check the new record conforms to the
         # schema before bothering with anything else
-        if self.schema:
-            if not self.schema.validate(subject=record, raise_exception=False):
-                print(F'Validation Failed ({self.schema.last_error}):', record)
-                return False
+        if self.schema and not self.schema.validate(subject=record, raise_exception=False):
+            print(F'Validation Failed ({self.schema.last_error}):', record)
+            return False
 
         self.last_write = time.time_ns()
 
@@ -124,7 +121,7 @@ class Writer():
             self.bytes_left_to_write_in_partition -= len_serial
             if self.bytes_left_to_write_in_partition <= 0:
                 if len_serial > self.partition_size:
-                    raise Exception('Record size is larger than partition.')
+                    raise ValueError('Record size is larger than partition.')
                 self.on_partition_closed()
 
             # if we don't have a current file to write to, create one
@@ -174,10 +171,10 @@ class _PartFileWriter():
     """ simple wrapper for file writing to a temp file """
     def __init__(
             self,
-            file_name: str = None,
+            file_name: str,
             commit_on_write: bool = False,
             compress: bool = False):
-        self.file = open(file_name, mode='wb')
+        self.file: Any = open(file_name, mode='wb')
         if compress:
             self.file = lzma.open(self.file, mode='wb')
         self.commit_on_write = commit_on_write
@@ -194,7 +191,7 @@ class _PartFileWriter():
         try:
             self.file.flush()
             self.file.close()
-        except Exception:
+        except Exception:   # nosec - ignore errors
             pass
 
     def __del__(self):

@@ -1,7 +1,7 @@
 import datetime
 from ..helpers import BlobPaths
 try:
-    from google.cloud import storage
+    from google.cloud import storage  # type:ignore
 except ImportError:
     pass
 from typing import Optional

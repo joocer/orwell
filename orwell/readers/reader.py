@@ -134,7 +134,7 @@ class Reader():
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        pass
+        pass  # exist needs to exist to be a context manager
 
     def read_line(self):
         try:
@@ -152,7 +152,7 @@ class Reader():
         try:
             import pandas as pd  # type:ignore
         except ImportError:
-            raise Exception("Pandas must be installed to use 'to_pandas'")
+            raise ImportError("Pandas must be installed to use 'to_pandas'")
         return pd.DataFrame(self)
 
         """

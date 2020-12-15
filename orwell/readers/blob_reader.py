@@ -6,7 +6,7 @@ import lzma
 import datetime
 from ..helpers.blob_paths import BlobPaths
 from typing import Tuple, Union, Optional
-import gva.logging
+import gva.logging  # type:ignore
 
 
 def blob_reader(
@@ -19,8 +19,6 @@ def blob_reader(
     """
     Blob reader, will iterate over as set of blobs in a path.
     """
-    logger = gva.logging.get_logger()
-
     # validate request
     if not project:
         raise ValueError('Blob Reader requires Project to be set')

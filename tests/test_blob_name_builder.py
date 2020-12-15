@@ -31,12 +31,9 @@ def test_blob_paths_split_filename():
     assert name == '.dot_start', f"{name} {ext}"
     assert ext == '.zip', f"{name} {ext}"
 
-    error_thrown = False
-    try:
-        name, ext = BlobPaths.split_filename("")  # empty
-    except:
-        error_thrown = True
-    assert error_thrown
+    name, ext = BlobPaths.split_filename("")  # empty
+    assert len(name) == 0
+    assert len(ext) == 0
 
     name, ext = BlobPaths.split_filename("with/path/file.ext") 
     assert name == 'with/path/file', f"{name} {ext}"
