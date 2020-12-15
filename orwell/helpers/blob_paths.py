@@ -7,7 +7,7 @@ class BlobPaths(object):
     def split_filename(filename: str):
         """ see test cases for all handled edge cases """
         if not filename:
-            raise ValueError('split_filename: filename must have a value')
+            return '', ''
 
         ext = ''
         name = ''
