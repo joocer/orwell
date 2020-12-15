@@ -2,3 +2,4 @@ google_cloud_storage
 xmltodict
 ujson
 git+https://github.com/gva-jjoyce/gva_logging
+git+https://github.com/gva-jjoyce/gva_data_validator
