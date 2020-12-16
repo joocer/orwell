@@ -83,6 +83,7 @@ class Writer():
         self.writer = writer
         self.kwargs = kwargs
         self.compress = compress
+        self.file_name = None
 
         if use_worker_thread:
             self.thread = threading.Thread(target=_worker_thread, args=(self,))
