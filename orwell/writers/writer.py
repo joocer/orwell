@@ -106,7 +106,7 @@ class Writer():
         """
         # this is a killer - check the new record conforms to the
         # schema before bothering with anything else
-        if self.schema and not self.schema.validate(subject=record, raise_exception=False):
+        if self.schema and not self.schema.validate(subject=record, raise_exception=True):
             print(F'Validation Failed ({self.schema.last_error}):', record)
             return False
 

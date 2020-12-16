@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setup(
    name='orwell',
-   version='0.0.11',
+   version='0.0.12',
    description='Orwell',
    long_description=long_description,
    long_description_content_type="text/markdown",
