@@ -33,8 +33,9 @@ import time
 import os
 import threading
 import tempfile
+import datetime
 from .blob_writer import blob_writer
-from typing import Callable, Optional, Any
+from typing import Callable, Optional, Any, Union
 from gva.data.validator import Schema  # type:ignore
 try:
     import ujson as json
@@ -54,6 +55,7 @@ class Writer():
         compress: bool = False,
         use_worker_thread: bool = True,
         idle_timeout_seconds: int = 60,
+        date: Optional[datetime.date] = None,
         **kwargs):
         """
         DataWriter
@@ -83,7 +85,8 @@ class Writer():
         self.writer = writer
         self.kwargs = kwargs
         self.compress = compress
-        self.file_name = None
+        self.file_name: Optional[str] = None
+        self.date = date
 
         if use_worker_thread:
             self.thread = threading.Thread(target=_worker_thread, args=(self,))
@@ -129,7 +132,7 @@ class Writer():
             if not self.file_writer:
                 self.file_name = self._get_temp_file_name()
                 self.file_writer = _PartFileWriter(
-                        file_name=self.file_name,
+                        file_name=self.file_name,  # type:ignore
                         commit_on_write=self.commit_on_write,
                         compress=self.compress)
                 self.bytes_left_to_write_in_partition = self.partition_size
@@ -155,6 +158,7 @@ class Writer():
                 source_file_name=self.file_name,
                 target_path=self.to_path,
                 add_extention='.lzma' if self.compress else '',
+                date=self.date,
                 **self.kwargs)
         try:
             os.remove(self.file_name)
@@ -176,7 +180,7 @@ class _PartFileWriter():
     """ simple wrapper for file writing to a temp file """
     def __init__(
             self,
-            file_name: str,
+            file_name: str,  # type:ignore
             commit_on_write: bool = False,
             compress: bool = False):
         self.file: Any = open(file_name, mode='wb')
