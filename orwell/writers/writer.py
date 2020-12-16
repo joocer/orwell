@@ -158,7 +158,7 @@ class Writer():
                 **self.kwargs)
         try:
             os.remove(self.file_name)
-        except OSError:
+        except (OSError, TypeError):
             pass
         self.file_writer = None
         self.file_name = None
