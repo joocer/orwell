@@ -145,18 +145,22 @@ class Writer():
         self.on_partition_closed()
 
     def on_partition_closed(self):
+        # finalize the writer
         if self.file_writer:
             self.file_writer.finalize()
-        self.writer(
-            source_file_name=self.file_name,
-            target_path=self.to_path,
-            add_extention='.lzma' if self.compress else '',
-            **self.kwargs)
+        # save the file to it's destination
+        if self.file_name:
+            self.writer(
+                source_file_name=self.file_name,
+                target_path=self.to_path,
+                add_extention='.lzma' if self.compress else '',
+                **self.kwargs)
         try:
             os.remove(self.file_name)
         except OSError:
             pass
         self.file_writer = None
+        self.file_name = None
 
     def __del__(self):
         self.on_partition_closed()
