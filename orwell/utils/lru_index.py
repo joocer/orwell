@@ -17,7 +17,7 @@ class LRU_Index(object):
     __slots__ = ('hash_list', 'size')
 
     def __init__(self, size: int = 1000):
-        self.hash_list = {}
+        self.hash_list: dict = {}
         self.size = size + 1
 
     def test(self, item: Any):

@@ -20,6 +20,9 @@ jobs:
       - name: install requirements
         run:  pip install -r $GITHUB_WORKSPACE/requirements.txt
 
+      - name: install optional requirements
+        run:  pip install -r $GITHUB_WORKSPACE/requirements-optional.txt
+
       - name: run test
         run: pytest 
 
@@ -55,4 +58,4 @@ jobs:
         run:  pip install mypy
 
       - name: run test
-        run: mypy .
+        run: mypy orwell

@@ -128,7 +128,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-scratch/
+_temp/**
 sample_data/**
 **.lzma
 **.jsonl
@@ -137,3 +137,4 @@ sample_data/**
 scratch/**
 _scratch/**
 **DS_Store**
+.cloudstorage/**

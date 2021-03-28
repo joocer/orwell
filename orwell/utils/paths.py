@@ -14,15 +14,15 @@ def get_parts(path_string: str):
     bucket = path.parts[0]
 
     if len(path.parts) == 1:
-        parts = 'partitions'
+        parts = 'partitions'  # type:ignore
         stem = None
         suffix = None
     elif path.suffix == "":
-        parts = pathlib.PurePosixPath('/'.join(path.parts[1:-1])) / path.stem
+        parts = pathlib.PurePosixPath('/'.join(path.parts[1:-1])) / path.stem  # type:ignore
         stem = None
         suffix = None
     else:
-        parts = pathlib.PurePosixPath('/'.join(path.parts[1:-1]))
+        parts = pathlib.PurePosixPath('/'.join(path.parts[1:-1]))  # type:ignore
         stem = path.stem
         suffix = path.suffix
 

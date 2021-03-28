@@ -20,7 +20,7 @@ class BatchWriter(SimpleWriter):
             schema: Schema = None,
             format: str = 'zstd',
             date: Any = None,
-            frame_id: str = None,
+            frame_id: str = None, 
             **kwargs):
         """
         The batch data writer to writes data records into partitions. Batches
@@ -62,7 +62,7 @@ class BatchWriter(SimpleWriter):
         if "{date" not in self.dataset and not kwargs.get('raw_path', False):
             self.dataset += '/{datefolders}'
         self.dataset = paths.build_path(
-                self.dataset + '/' + frame_id, 
+                self.dataset + '/' + frame_id,   # type:ignore
                 self.batch_date)
 
         kwargs['format'] = format

@@ -1,3 +1,4 @@
+# type:ignore
 import glob
 import datetime
 import paho.mqtt.client as mqtt

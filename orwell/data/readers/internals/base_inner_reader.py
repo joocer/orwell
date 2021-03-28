@@ -7,6 +7,7 @@ import datetime
 from io import IOBase
 from typing import Iterable
 from dateutil import parser
+from ...formats import json
 from ....utils import common, paths
 from ....logging import get_logger
 
@@ -79,22 +80,21 @@ class BaseInnerReader(abc.ABC):
 
         if blob.endswith('.zstd'):
             import zstandard
-            with zstandard.open(stream, 'r', encoding='utf8') as file:
+            with zstandard.open(stream, 'r', encoding='utf8') as file:  # type:ignore
                 yield from file
         elif blob.endswith('.lzma'):
             import lzma
-            with lzma.open(stream, 'rb') as file:
+            with lzma.open(stream, 'rb') as file:  # type:ignore
                 yield from file
         elif blob.endswith('.parquet'):
-            import pyarrow.parquet as pq
+            import pyarrow.parquet as pq  # type:ignore
             table = pq.read_table(stream)
             for batch in table.to_batches():
                 dict_batch = batch.to_pydict()
                 for index in range(len(batch)):
-                    # expecting a string, but this is a dict??
-                    yield {k:v[index] for k,v in dict_batch.items()}
+                    yield json.serialize({k:v[index] for k,v in dict_batch.items()})  # type:ignore
         else:  # assume text in lines format
-            text = stream.read().decode('utf8')
+            text = stream.read().decode('utf8')  # type:ignore
             lines = text.splitlines()
             yield from [item for item in lines if len(item) > 0]
 

@@ -40,7 +40,7 @@ def get_logger() -> logging.Logger:
     logger = logging.getLogger(LOG_NAME)
     try:
         logger.setLevel(int(os.environ.get('LOGGING_LEVEL', 25)))
-    except:
+    except:  # nosec
         pass # nosec
 
     # add the TRACE, AUDIT and ALERT levels to the logger

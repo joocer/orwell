@@ -1,1 +1,1 @@
-from .mqtt_reader import MqttReader
+from .mqtt_reader import MqttReader  # type:ignore

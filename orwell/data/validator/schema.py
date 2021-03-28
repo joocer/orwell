@@ -46,7 +46,7 @@ def is_date(**kwargs):
                     if not value[16] in DATE_SEPARATORS:
                         return False                    
                     # YYYY-MM-DDTHH:MM:SS
-                    datetime.datetime(*map(int, [value[:4], value[5:7], value[8:10], value[11:13], value[14:16], value[17:19]])) 
+                    datetime.datetime(*map(int, [value[:4], value[5:7], value[8:10], value[11:13], value[14:16], value[17:19]]))   # type:ignore
             return True
         except (ValueError, TypeError):
             return False

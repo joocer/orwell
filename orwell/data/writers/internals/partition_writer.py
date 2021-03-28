@@ -68,8 +68,8 @@ class PartitionWriter():
                     pass
 
                 if self.format == "parquet":
-                    from pyarrow import json as js
-                    import pyarrow.parquet as pq
+                    from pyarrow import json as js  # type:ignore
+                    import pyarrow.parquet as pq    # type:ignore
                     
                     table = js.read_json(self.file_name)
                     pq.write_table(table, self.file_name + '.parquet', compression='ZSTD')

@@ -23,7 +23,7 @@ def test_can_read_parquet():
         pass
 
     assert i == 57580
-    assert isinstance(row, dict)
+    assert isinstance(row, str)
 
 if __name__ == "__main__":
     test_can_read_parquet()

@@ -9,7 +9,7 @@ try:
     import resource
 except ImportError:
     can_use_resource_lib = False
-    import psutil
+    import psutil  # type:ignore
 
 
 class ResourceMonitor():
