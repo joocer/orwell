@@ -1,0 +1,17 @@
+# {{ table_name }}
+
+**Description**: {{ description }}  
+**Source**: {{ source }}  
+**Classification**: {{ classification }}  
+**Licence**: {{ licence }}  
+
+## Fields
+
+| Field           | Type         | Description               |
+|-----------------|--------------|---------------------------|
+{% for field in fields %}| {{ field.name }}  | {{ field.type }} {{ field.min }} {{ field.max}}{{ field.symbols }} | {{ field.description }} |  
+{% endfor %} 
+
+Compressed: {{ config.compress }}
+
+_this file has been automatically generated - changes may be overridden_

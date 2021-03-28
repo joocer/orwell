@@ -132,3 +132,8 @@ scratch/
 sample_data/**
 **.lzma
 **.jsonl
+**.
+.dccache
+scratch/**
+_scratch/**
+**DS_Store**
